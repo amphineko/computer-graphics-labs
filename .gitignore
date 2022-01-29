@@ -1,0 +1,14 @@
+.idea
+.vscode
+build
+CMakeCache.txt
+CMakeFiles
+CMakeLists.txt.user
+CMakeScripts
+CTestTestfile.cmake
+Makefile
+Testing
+_deps
+cmake_install.cmake
+compile_commands.json
+install_manifest.txt

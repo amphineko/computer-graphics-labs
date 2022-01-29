@@ -1,213 +1,221 @@
 #include <GL/glew.h>
-#include <GLUT/glut.h>
+#include <GLFW/glfw3.h>
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
-#include <string>
-#include <fstream>
 #include <iostream>
-#include <sstream>
 
-// Macro for indexing vertex buffer
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+#include "camera.h"
+#include "shader.h"
 
 using namespace std;
 
-bool LoadFile(const std::string &fileName, std::string &outShader) {
-    std::ifstream file(fileName);
-    if (!file.is_open()) {
-        std::cout << "Error Loading file: " << fileName << " - impossible to open file" << std::endl;
-        return false;
-    }
+struct vertex_t {
+    GLfloat x, y, z, r, g, b, a;
+};
 
-    if (file.fail()) {
-        std::cout << "Error Loading file: " << fileName << std::endl;
-        return false;
-    }
+vertex_t vertices[] = {
+        {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+        {1.0f,  -1.0f, 1.0f,  1.0f, 0.0f, 0.0f, 1.0f},
+        {-1.0f, -1.0f, 1.0f,  1.0f, 1.0f, 0.0f, 1.0f},
 
-    std::stringstream stream;
-    stream << file.rdbuf();
-    file.close();
+        {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+        {1.0f,  -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+        {1.0f,  -1.0f, 1.0f,  1.0f, 0.0f, 0.0f, 1.0f},
 
-    outShader = stream.str();
+        {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+        {1.0f,  1.0f,  -1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+        {1.0f,  -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+
+        {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+        {1.0f,  1.0f,  -1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+        {-1.0f, 1.0f,  -1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+
+        {1.0f,  -1.0f, 1.0f,  1.0f, 0.0f, 0.0f, 1.0f},
+        {1.0f,  -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+        {1.0f,  1.0f,  -1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+};
+
+int display_width = 1024, display_height = 768;
+
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+
+void process_keyboard(GLFWwindow *window, Camera *camera, double delta_frame);
+
+void process_mouse(GLFWwindow *window, Camera *camera, double &last_x, double &last_y, bool &is_holding);
+
+bool init_objects(GLuint shader_program) {
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    auto pos_loc = glGetAttribLocation(shader_program, "vPos");
+    glVertexAttribPointer(pos_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(pos_loc);
+
+    auto color_loc = glGetAttribLocation(shader_program, "vColor");
+    glVertexAttribPointer(color_loc, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_t), BUFFER_OFFSET(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(color_loc);
 
     return true;
 }
 
-void AddShader(GLuint ShaderProgram, const char *pShaderText, GLenum ShaderType) {
-    // create a shader object
-    GLuint ShaderObj = glCreateShader(ShaderType);
+bool init(ShaderProgram *&shader_program) {
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
 
-    if (ShaderObj == 0) {
-        fprintf(stderr, "Error creating shader type %d\n", ShaderType);
-        exit(0);
+    shader_program = new ShaderProgram("./cs7gv5_lab1.vert", "./cs7gv5_lab1.frag");
+    if (shader_program->IsReady()) {
+        shader_program->Use();
+    } else {
+        return false;
     }
-    // Bind the source code to the shader, this happens before compilation
-    glShaderSource(ShaderObj, 1, (const GLchar **) &pShaderText, NULL);
-    // compile the shader and check for errors
-    glCompileShader(ShaderObj);
-    GLint success;
-    // check for shader related errors using glGetShaderiv
-    glGetShaderiv(ShaderObj, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        GLchar InfoLog[1024];
-        glGetShaderInfoLog(ShaderObj, 1024, NULL, InfoLog);
-        fprintf(stderr, "Error compiling shader type %d: '%s'\n", ShaderType, InfoLog);
-        exit(1);
-    }
-    // Attach the compiled shader object to the program object
-    glAttachShader(ShaderProgram, ShaderObj);
+
+    return init_objects(shader_program->GetProgram());
 }
 
-GLuint CompileShaders(const std::string &vsFilename, const std::string &psFilename) {
-    //Start the process of setting up our shaders by creating a program ID
-    //Note: we will link all the shaders together into this ID
-    GLuint shaderProgramID = glCreateProgram();
-    if (shaderProgramID == 0) {
-        fprintf(stderr, "Error creating shader program\n");
-        exit(1);
-    }
-
-    // Create two shader objects, one for the vertex, and one for the fragment shader
-    std::string vs, ps;
-    LoadFile(vsFilename, vs);
-    AddShader(shaderProgramID, vs.c_str(), GL_VERTEX_SHADER);
-    LoadFile(psFilename, ps);
-    AddShader(shaderProgramID, ps.c_str(), GL_FRAGMENT_SHADER);
-
-    GLint Success = 0;
-    GLchar ErrorLog[1024] = {0};
-
-    // After compiling all shader objects and attaching them to the program, we can finally link it
-    glLinkProgram(shaderProgramID);
-    // check for program related errors using glGetProgramiv
-    glGetProgramiv(shaderProgramID, GL_LINK_STATUS, &Success);
-    if (Success == 0) {
-        glGetProgramInfoLog(shaderProgramID, sizeof(ErrorLog), NULL, ErrorLog);
-        fprintf(stderr, "Error linking shader program: '%s'\n", ErrorLog);
-        exit(1);
-    }
-
-    // program has been successfully linked but needs to be validated to check whether the program can execute given the current pipeline state
-    glValidateProgram(shaderProgramID);
-    // check for program related errors using glGetProgramiv
-    glGetProgramiv(shaderProgramID, GL_VALIDATE_STATUS, &Success);
-    if (!Success) {
-        glGetProgramInfoLog(shaderProgramID, sizeof(ErrorLog), NULL, ErrorLog);
-        fprintf(stderr, "Invalid shader program: '%s'\n", ErrorLog);
-        exit(1);
-    }
-    // Finally, use the linked shader program
-    // Note: this program will stay in effect for all draw calls until you replace it with another or explicitly disable its use
-    glUseProgram(shaderProgramID);
-    return shaderProgramID;
-}
-
-GLuint generateObjectBuffer(GLfloat vertices[], GLfloat colors[], GLuint numVertices) {
-    // Generate 1 generic buffer object, called VBO
-    GLuint VBO;
-    glGenBuffers(1, &VBO);
-    // In OpenGL, we bind (make active) the handle to a target name and then execute commands on that target
-    // Buffer will contain an array of vertices
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // After binding, we now fill our object with data, everything in "Vertices" goes to the GPU
-    glBufferData(GL_ARRAY_BUFFER, numVertices * 7 * sizeof(GLfloat), NULL, GL_STATIC_DRAW);
-    // if you have more data besides vertices (e.g., vertex colours or normals), use glBufferSubData to tell the buffer when the vertices array ends and when the colors start
-    glBufferSubData(GL_ARRAY_BUFFER, 0, numVertices * 3 * sizeof(GLfloat), vertices);
-    glBufferSubData(GL_ARRAY_BUFFER, numVertices * 3 * sizeof(GLfloat), numVertices * 4 * sizeof(GLfloat), colors);
-    return VBO;
-}
-
-void linkCurrentBuffertoShader(GLuint shaderProgramID, GLuint numVertices) {
-    // find the location of the variables that we will be using in the shader program
-    GLuint positionID = glGetAttribLocation(shaderProgramID, "vPosition");
-    GLuint colorID = glGetAttribLocation(shaderProgramID, "vColor");
-    // Have to enable this
-    glEnableVertexAttribArray(positionID);
-    // Tell it where to find the position data in the currently active buffer (at index positionID)
-    glVertexAttribPointer(positionID, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    // Similarly, for the color data.
-    glEnableVertexAttribArray(colorID);
-    glVertexAttribPointer(colorID, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(numVertices * 3 * sizeof(GLfloat)));
-}
-
-void display() {
-
+void draw(GLFWwindow *window) {
+    glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    // NB: Make the call to draw the geometry in the currently activated vertex buffer. This is where the GPU starts to work!
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    glDrawArrays(GL_TRIANGLES, 3, 3);
-    glutSwapBuffers();
-}
 
-void init() {
-    // Create 3 vertices that make up a triangle that fits on the viewport
-    GLfloat vertices[] = {
-            // top-left triangle
-            -1.0f, -1.0f, 0.0f,
-            -1.0f, 1.0f, 0.0f,
-            1.0f, 1.0f, 0.0f,
+    for (GLint i = 0; i < sizeof(vertices) / sizeof(vertex_t); ++i) {
+        glDrawArrays(GL_TRIANGLES, i * 3, 3);
+    }
 
-            // bottom-right triangle
-            -1.0f, -1.0f, 0.0f,
-            1.0f, -1.0f, 0.0f,
-            1.0f, 1.0f, 0.0f,
-    };
-
-    // Create a color array that identifies the colors of each vertex (format R, G, B, A)
-    GLfloat colors[] = {
-            1.0f, 0.0f, 0.0f, 1.0f, // Red
-            1.0f, 1.0f, 0.0f, 1.0f, // Yellow
-            1.0f, 0.0f, 0.0f, 1.0f, // Red
-
-            1.0f, 0.0f, 0.0f, 1.0f, // Red
-            1.0f, 1.0f, 0.0f, 1.0f, // Yellow
-            1.0f, 0.0f, 0.0f, 1.0f, // Red
-    };
-
-    GLuint VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    // Set up the shaders
-    GLuint shaderProgramID = CompileShaders("./cs7gv5_lab1.vs", "./cs7gv5_lab1.ps");
-
-    // Put the vertices and colors into a vertex buffer object
-    generateObjectBuffer(vertices, colors, 6);
-
-    // Link the current buffer to the shader
-    linkCurrentBuffertoShader(shaderProgramID, 6);
+    glfwSwapBuffers(window);
 }
 
 int main(int argc, char **argv) {
-    // Set up the window
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(800, 600);
-    glutCreateWindow("Hello Triangle");
-
-    // Tell glut where the display function is
-    glutDisplayFunc(display);
-
-    // A call to glewInit() must be done after glut is initialized!
-    GLenum res = glewInit();
-    // Check for any errors
-    if (res != GLEW_OK) {
-        fprintf(stderr, "Error: '%s'\n", glewGetErrorString(res));
-        return 1;
+    if (!glfwInit()) {
+        fprintf(stderr, "Failed to initialize GLFW\n");
+        return -1;
     }
-    // Set up your objects and shaders
-    init();
-    // Begin infinite event loop
-    glutMainLoop();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+    GLFWwindow *window;
+    window = glfwCreateWindow(display_width, display_height, "Lab 1: Hello World", nullptr, nullptr);
+    if (window == nullptr) {
+        fprintf(stderr, "Failed to open GLFW window.\n");
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow *window, int width, int height) {
+        std::cout << "INFO: Resized window to " << width << "x" << height << std::endl;
+        display_width = width;
+        display_height = height;
+        glViewport(0, 0, width, height);
+    });
+
+    if (glewInit() != GLEW_OK) {
+        fprintf(stderr, "Failed to initialize GLEW\n");
+        glfwTerminate();
+        return -1;
+    }
+
+    ShaderProgram *shader_program = nullptr;
+    init(shader_program);
+    shader_program->Use();
+
+    auto *camera = new Camera(0, 0, 3, 0, 270);
+
+    auto last_frame_time = glfwGetTime();
+    auto last_counter_time = glfwGetTime();
+    unsigned long frame_count = 0;
+
+    double mouse_last_x, mouse_last_y;
+    bool mouse_hold = false;
+
+    while (!glfwWindowShouldClose(window)) {
+        auto current_time = glfwGetTime();
+        auto frame_time = current_time - last_frame_time;
+        last_frame_time = current_time;
+
+        process_keyboard(window, camera, frame_time);
+        process_mouse(window, camera, mouse_last_x, mouse_last_y, mouse_hold);
+
+        auto aspect = (float) display_width / (float) display_height;
+        auto zoom = glm::radians((float) camera->Zoom);
+        auto projection = glm::perspective(zoom, aspect, 0.1f, 100.0f);
+        shader_program->SetMat4("projection", projection);
+
+        auto view = camera->GetViewMatrix();
+        shader_program->SetMat4("view", view);
+
+        draw(window);
+
+        ++frame_count;
+        if (current_time - last_counter_time >= 5.0) {
+            auto position = camera->GetPosition();
+            std::cout << "DEBUG: fps=" << float(frame_count) / (current_time - last_counter_time) << ",\t";
+            std::cout << "pos=" << position.x << "," << position.y << "," << position.z << std::endl;
+
+            last_counter_time = current_time;
+            frame_count = 0;
+        }
+
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
     return 0;
 }
 
+void process_keyboard(GLFWwindow *window, Camera *camera, double delta_frame) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
 
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        camera->ApplyTranslate(CAMERA_MOVEMENT_FORWARD, delta_frame);
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        camera->ApplyTranslate(CAMERA_MOVEMENT_LEFT, delta_frame);
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        camera->ApplyTranslate(CAMERA_MOVEMENT_BACKWARD, delta_frame);
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        camera->ApplyTranslate(CAMERA_MOVEMENT_RIGHT, delta_frame);
+    }
 
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        camera->ApplyTranslate(CAMERA_MOVEMENT_UP, delta_frame);
+    }
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+        camera->ApplyTranslate(CAMERA_MOVEMENT_DOWN, delta_frame);
+    }
+}
 
+void process_mouse(GLFWwindow *window, Camera *camera, double &last_x, double &last_y, bool &is_holding) {
+    double mouse_x, mouse_y;
+    double center_x = double(display_width) / 2, center_y = double(display_height) / 2;
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        if (!is_holding) {
+            glfwSetCursorPos(window, center_x, center_y);
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+            is_holding = true;
+        } else {
+            glfwGetCursorPos(window, &mouse_x, &mouse_y);
+            glfwSetCursorPos(window, center_x, center_y);
 
+            mouse_x = (mouse_x - center_x) / display_width;
+            mouse_y = (mouse_y - center_y) / display_height;
+            camera->ApplyRotate(float(mouse_x), float(-mouse_y));
+        }
+    } else {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-
-
-
-
+        is_holding = false;
+    }
+}

@@ -3,21 +3,22 @@ project(cs7gv5_lab1)
 
 set(CMAKE_CXX_STANDARD 20)
 
-
 find_package(OpenGL REQUIRED)
 find_package(GLEW 2.0 REQUIRED)
-find_package(GLUT REQUIRED)
-include_directories(${OpenGL_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS})
+find_package(glfw3 3.3 REQUIRED)
+include_directories(${GLEW_INCLUDE_DIRS} ${GLFW_INCLUDE_DIRS} ${OpenGL_INCLUDE_DIRS})
 
-add_executable(cs7gv5_lab1 cs7gv5_lab1.cpp)
-target_link_libraries(cs7gv5_lab1 ${OpenGL_LIBRARIES} ${GLEW_LIBRARIES} ${GLUT_LIBRARIES})
+include_directories(include)
+
+add_executable(cs7gv5_lab1 cs7gv5_lab1.cpp camera.cpp camera.h shader.cpp shader.h program.cpp)
+target_link_libraries(cs7gv5_lab1 ${GLEW_LIBRARIES} glfw ${OpenGL_LIBRARIES})
 
 if (APPLE)
     target_link_libraries(cs7gv5_lab1 "-framework OpenGL")
-endif()
+endif ()
 
-#include(CMakePrintHelpers)
-#cmake_print_variables(GLEW_INCLUDE_DIRS)
-#cmake_print_variables(GLEW_LIBRARIES)
-#cmake_print_variables(GLUT_INCLUDE_DIRS)
-#cmake_print_variables(GLUT_LIBRARIES)
+include(CMakePrintHelpers)
+cmake_print_variables(GLEW_INCLUDE_DIRS)
+cmake_print_variables(GLEW_LIBRARIES)
+cmake_print_variables(GLFW_INCLUDE_DIRS)
+cmake_print_variables(GLFW_LIBRARIES)
