@@ -29,6 +29,10 @@ public:
 
     void ApplyRotate(float offset_x, float offset_y);
 
+    void SetPosition(float x, float y, float z);
+
+    void SetRotation(float pitch, float yaw);
+
 private:
     float pitch, yaw;
 

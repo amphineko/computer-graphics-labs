@@ -10,12 +10,15 @@ include_directories(${GLEW_INCLUDE_DIRS} ${GLFW_INCLUDE_DIRS} ${OpenGL_INCLUDE_D
 
 include_directories(include)
 
-add_executable(cs7gv5_lab1 cs7gv5_lab1.cpp camera.cpp camera.h shader.cpp shader.h program.cpp)
-target_link_libraries(cs7gv5_lab1 ${GLEW_LIBRARIES} glfw ${OpenGL_LIBRARIES})
+set(shared_files camera.cpp camera.h shader.cpp shader.h program.cpp)
+set(shared_libraries ${GLEW_LIBRARIES} glfw ${OpenGL_LIBRARIES})
 
 if (APPLE)
-    target_link_libraries(cs7gv5_lab1 "-framework OpenGL")
+    set(shared_libraries ${shared_libraries} "-framework OpenGL")
 endif ()
+
+add_executable(cs7gv5_lab1 cs7gv5_lab1.cpp ${shared_files})
+target_link_libraries(cs7gv5_lab1 ${shared_libraries})
 
 include(CMakePrintHelpers)
 cmake_print_variables(GLEW_INCLUDE_DIRS)
