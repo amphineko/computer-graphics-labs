@@ -28,8 +28,8 @@ public:
         vertices_ = &vertices[0];
         vertices_size_ = sizeof(vertices);
 
-        camera_->SetPosition(-3.0f, 4.5f, 3.0f);
-        camera_->SetRotation(-45.0f, 315.0f);
+        camera_->SetPosition(-1.75f, 2.0f, 3.0f);
+        camera_->SetRotation(-30.0f, 300.0f);
     }
 
 protected:
