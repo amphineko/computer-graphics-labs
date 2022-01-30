@@ -11,7 +11,7 @@ include_directories(${GLEW_INCLUDE_DIRS} ${GLFW_INCLUDE_DIRS} ${OpenGL_INCLUDE_D
 include_directories(include)
 
 set(shared_files camera.cpp camera.h shader.cpp shader.h program.cpp)
-set(shared_libraries ${GLEW_LIBRARIES} glfw ${OpenGL_LIBRARIES})
+set(shared_libraries GLEW::GLEW glfw OpenGL::GL)
 
 if (APPLE)
     set(shared_libraries ${shared_libraries} "-framework OpenGL")
