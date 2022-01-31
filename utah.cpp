@@ -45,7 +45,7 @@ void UtahProgram::InitializeObjects() {
     model_->SetPosition(0.0f, 0.0f, 0.0f);
 
     model_small_ = new Model();
-    model_small_->LoadSceneFromFile("models/cone.obj");
+    model_small_->LoadSceneFromFile("models/cone/source/Conus_LP.fbx");
     model_small_->Initialize();
     model_small_->SetPosition(20.0f, 0.0f, 20.0f);
     model_small_->SetScale(0.25f);

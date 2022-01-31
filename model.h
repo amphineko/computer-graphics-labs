@@ -16,15 +16,31 @@ struct MeshVertex {
     [[maybe_unused]] glm::vec3 position;
     [[maybe_unused]] glm::vec3 normal;
     [[maybe_unused]] glm::vec2 tex_coord;
+    [[maybe_unused]] glm::vec3 tangent;
+    [[maybe_unused]] glm::vec3 bitangent;
 
-    MeshVertex(
-        glm::vec3 position, glm::vec3 normal, glm::vec2 tex_coord
-    ) : position(position), normal(normal), tex_coord(tex_coord) {}
+    explicit MeshVertex(glm::vec3 position)
+        : position(position),
+          normal(glm::vec3(0.0f)),
+          tex_coord(glm::vec2(0.0f)),
+          tangent(glm::vec3(0.0f)),
+          bitangent(glm::vec3(0.0f)) {}
+
+//    MeshVertex(
+//        glm::vec3 position, glm::vec3 normal, glm::vec2 tex_coord, glm::vec3 tangent, glm::vec3 bitangent
+//    ) : position(position), normal(normal), tex_coord(tex_coord), tangent(tangent), bitangent(bitangent) {}
 };
+
+typedef unsigned int MeshTextureType;
+
+const MeshTextureType MESH_TEXTURE_TYPE_DIFFUSE = 0;
+const MeshTextureType MESH_TEXTURE_TYPE_SPECULAR = 1;
+const MeshTextureType MESH_TEXTURE_TYPE_NORMALS = 2;
+const MeshTextureType MESH_TEXTURE_TYPE_HEIGHT = 3;
 
 struct MeshTexture {
     [[maybe_unused]] GLuint id;
-    [[maybe_unused]] std::string type;
+    [[maybe_unused]] MeshTextureType type;
 };
 
 class Mesh {
@@ -34,12 +50,22 @@ public:
     void Draw(ShaderProgram *shader);
 
     void Initialize();
+
+    static GLuint LoadTextureFromFile(const char *path);
+
 private:
     GLuint vao_ = 0, vbo_ = 0, ebo_ = 0;
 
     std::vector<MeshVertex> vertices_;
     std::vector<GLuint> indices_;
     std::vector<MeshTexture> textures_;
+
+    glm::vec3 ambient_ = glm::vec3(0.0f);
+    glm::vec3 diffuse_ = glm::vec3(0.0f);
+    glm::vec3 specular_ = glm::vec3(0.0f);
+    float shininess_ = 0.0f;
+
+    void LoadTexture(aiMaterial *material, aiTextureType type, MeshTextureType texture_type);
 };
 
 class Model {

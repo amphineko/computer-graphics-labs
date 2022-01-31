@@ -1,28 +1,109 @@
+#include "stbi/stb_image.h"
+
 #include "model.h"
+
+#define IS_NAN(x) (std::fpclassify(x) == FP_NAN)
 
 Mesh::Mesh(aiMesh *mesh, const aiScene *scene) {
     vertices_.reserve(mesh->mNumVertices);
-    for (GLuint i = 0; i < mesh->mNumVertices; i++) {
-        auto tex_coord = mesh->mTextureCoords[0]
-                         ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y)
-                         : glm::vec2(0.0f, 0.0f);
-        vertices_.emplace_back(
-            glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z),
-            glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z),
-            tex_coord);
+
+    for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+        vertices_.emplace_back(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z));
     }
 
-    for (GLuint i = 0; i < mesh->mNumFaces; i++) {
-        for (GLuint j = 0; j < mesh->mFaces[i].mNumIndices; j++) {
+    if (mesh->mNormals) {
+        for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+            if (IS_NAN(mesh->mNormals[i].x)) continue;
+            vertices_[i].normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+        }
+    }
+
+    if (mesh->mTextureCoords[0]) {
+        for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+            if (IS_NAN(mesh->mTextureCoords[0][i].x)) continue;
+            vertices_[i].tex_coord = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+        }
+    }
+
+    if (mesh->mTangents) {
+        for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+            if (IS_NAN(mesh->mTangents[i].x)) continue;
+            vertices_[i].tangent = glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z);
+        }
+    }
+
+    if (mesh->mBitangents) {
+        for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+            if (IS_NAN(mesh->mBitangents[i].x)) continue;
+            vertices_[i].bitangent = glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z);
+        }
+    }
+
+    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+        indices_.reserve(indices_.size() + mesh->mFaces[i].mNumIndices);
+        for (int j = 0; j < mesh->mFaces[i].mNumIndices; j++) {
             indices_.push_back(mesh->mFaces[i].mIndices[j]);
         }
     }
 
-    // TODO: load materials
+    auto material = scene->mMaterials[mesh->mMaterialIndex];
+
+    aiColor3D ambient, diffuse, specular, shininess;
+    material->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
+    material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+    material->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+    material->Get(AI_MATKEY_SHININESS, shininess);
+
+    ambient_ = glm::vec3(ambient.r, ambient.g, ambient.b);
+    diffuse_ = glm::vec3(diffuse.r, diffuse.g, diffuse.b);
+    specular_ = glm::vec3(specular.r, specular.g, specular.b);
+    shininess_ = shininess.r;
+
+    LoadTexture(material, aiTextureType_DIFFUSE, MESH_TEXTURE_TYPE_DIFFUSE);
+    LoadTexture(material, aiTextureType_SPECULAR, MESH_TEXTURE_TYPE_SPECULAR);
+    LoadTexture(material, aiTextureType_NORMALS, MESH_TEXTURE_TYPE_NORMALS);
+    LoadTexture(material, aiTextureType_HEIGHT, MESH_TEXTURE_TYPE_HEIGHT);
+
+    if (textures_.empty()) {
+        MeshTexture texture{
+            .id = LoadTextureFromFile("models/missing_texture.png"),
+            .type = MESH_TEXTURE_TYPE_DIFFUSE
+        };
+        textures_.emplace_back(texture);
+
+        std::cout << "DEBUG: Mesh has no textures, using default texture" << std::endl;
+    } else {
+        std::cout << "DEBUG: Mesh has " << textures_.size() << " textures" << std::endl;
+    }
 }
 
 void Mesh::Draw(ShaderProgram *shader) {
     // TODO: configure textures for shader
+
+    shader->SetVec3("mesh_ambient", ambient_);
+    shader->SetVec3("mesh_diffuse", diffuse_);
+    shader->SetVec3("mesh_specular", specular_);
+    shader->SetFloat("mesh_shininess", shininess_);
+
+    auto n_diffuse = 0, n_specular = 0, n_normal = 0, n_height = 0, i = 0;
+    for (auto texture: textures_) {
+        glActiveTexture(GL_TEXTURE0 + (++i));
+
+        std::string name;
+        switch (texture.type) {
+            case MESH_TEXTURE_TYPE_DIFFUSE:name = "texture_diffuse" + std::to_string(n_diffuse++);
+                break;
+            case MESH_TEXTURE_TYPE_SPECULAR:name = "texture_specular" + std::to_string(n_specular++);
+                break;
+            case MESH_TEXTURE_TYPE_NORMALS:name = "texture_normal" + std::to_string(n_normal++);
+                break;
+            case MESH_TEXTURE_TYPE_HEIGHT:name = "texture_height" + std::to_string(n_height++);
+                break;
+        }
+
+        shader->SetInt(name.c_str(), i);
+        glBindTexture(GL_TEXTURE_2D, texture.id);
+    }
 
     glBindVertexArray(vao_);
     glDrawElements(GL_TRIANGLES, GLsizei(indices_.size()), GL_UNSIGNED_INT, (const void *) 0);
@@ -59,6 +140,58 @@ void Mesh::Initialize() {
                  GL_STATIC_DRAW);
 }
 
+void Mesh::LoadTexture(aiMaterial *material, aiTextureType type, MeshTextureType texture_type) {
+    for (unsigned int i = 0; i < material->GetTextureCount(type); i++) {
+        aiString path;
+        material->GetTexture(type, i, &path);
+
+        auto texture_id = LoadTextureFromFile(path.C_Str());
+        MeshTexture texture{
+            .id = texture_id,
+            .type = texture_type,
+        };
+        textures_.emplace_back(texture);
+    }
+}
+
+GLuint Mesh::LoadTextureFromFile(const char *path) {
+    GLuint texture_id;
+    glGenTextures(1, &texture_id);
+
+    int width, height, nr_channels;
+    unsigned char *image = stbi_load(path, &width, &height, &nr_channels, 0);
+
+    if (!image) {
+        std::cerr << "ERROR: Failed to load texture from file: " << path << std::endl;
+        return texture_id;
+    }
+
+    GLint format;
+    switch (nr_channels) {
+        case STBI_grey:format = GL_RED;
+            break;
+        case STBI_rgb:format = GL_RGB;
+            break;
+        case STBI_rgb_alpha:format = GL_RGBA;
+            break;
+        default:std::cerr << "ERROR: Unsupported texture format: " << path << std::endl;
+            stbi_image_free(image);
+            return texture_id;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, image);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(image);
+    return texture_id;
+}
+
 Model::Model() {
     UpdateModelMatrix();
 }
@@ -91,6 +224,7 @@ void Model::LoadNode(aiNode *node, const aiScene *scene) {
 
 void Model::LoadScene(const aiScene *scene) {
     LoadNode(scene->mRootNode, scene);
+    std::cout << "DEBUG: Loaded model with " << meshes_.size() << " meshes" << std::endl;
 }
 
 bool Model::LoadSceneFromFile(const std::string &file_path) {

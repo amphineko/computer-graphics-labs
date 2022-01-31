@@ -1,4 +1,5 @@
 #include "program.h"
+#include "model.h"
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
@@ -91,6 +92,7 @@ void Program::Run() {
 void Program::Draw() {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 }
 
 void Program::InitializeObjects() {

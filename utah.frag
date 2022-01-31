@@ -13,21 +13,24 @@ uniform vec3 camera_position;
 uniform vec3 light_direction;
 uniform vec3 light_position;
 
-float near = 0.1;
-float far = 100.0;
+uniform vec3 mesh_ambient;
+uniform vec3 mesh_diffuse;
+uniform vec3 mesh_specular;
+uniform float mesh_shininess;
 
-float LinearizeDepth(float depth)
-{
-    float z = depth * 2.0 - 1.0;
-    return (2.0 * near * far) / (far + near - z * (far - near));
-}
+uniform sampler2D texture_diffuse0;
+uniform sampler2D texture_specular0;
+uniform sampler2D texture_normal0;
+uniform sampler2D texture_height0;
 
 void main()
 {
+    // TODO: apply rest of the texture maps
+
     // texture
 
-    vec3 color = vec3(31.0f / 255.0f, 71.0f / 255.0f, 136.0f / 255.0f);
-    vec3 ambient_color = 0.5 * color;
+    vec3 texture_color = texture(texture_diffuse0, fTexCoords).rgb;
+    vec3 ambient_color = mesh_ambient * texture_color;
 
     vec3 normal = normalize(fNormal);
     vec3 light_direction = normalize(light_position - fPosition);
@@ -35,7 +38,7 @@ void main()
     // diffuse
 
     float diffuse_factor = max(dot(normal, light_direction), 0.0);
-    vec3 diffuse_color = diffuse_factor * color;
+    vec3 diffuse_color = mesh_diffuse * texture_color * diffuse_factor;
 
     // specular
 
@@ -43,8 +46,8 @@ void main()
     vec3 reflect_direction = reflect(-light_direction, normal);
 
     float specular_factor = pow(max(dot(view_direction, reflect_direction), 0.0), 16.0f);
-    vec3 specular_color = specular_factor * color;
+    vec3 specular_color = mesh_specular * texture_color * specular_factor;
 
-    vec3 result = (ambient_color + diffuse_color + specular_color) * color;
+    vec3 result = (ambient_color + diffuse_color + specular_color) * texture_color;
     FragColor = vec4(result, 1.0);
 }
