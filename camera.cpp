@@ -53,12 +53,12 @@ void Camera::ApplyRotate(float offset_x, float offset_y) {
     UpdateDirectionVectors();
 }
 
-glm::mat4 Camera::GetViewMatrix() const {
-    return glm::lookAt(this->position, this->position + this->front, this->up);
-}
-
 glm::vec3 Camera::GetPosition() const {
     return this->position;
+}
+
+glm::mat4 Camera::GetViewMatrix() const {
+    return glm::lookAt(this->position, this->position + this->front, this->up);
 }
 
 void Camera::SetPosition(float x, float y, float z) {
@@ -71,4 +71,3 @@ void Camera::SetRotation(float pitch, float yaw) {
 
     UpdateDirectionVectors();
 }
-

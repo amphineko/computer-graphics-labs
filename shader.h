@@ -13,7 +13,10 @@ public:
 
     void Use() const;
 
-    void SetMat4(const char *name, glm::mat4 value) const;
+    void SetFloat(const char *name, float value) const;
+    void SetMat3(const char *name, glm::mat3 mat) const;
+    void SetMat4(const char *name, glm::mat4 mat) const;
+    void SetVec3(const char *name, glm::vec3 vec) const;
 
     static bool EnsureProgramLinked(GLuint program);
 
