@@ -40,12 +40,12 @@ bool UtahProgram::Initialize(std::string window_title) {
 
 void UtahProgram::InitializeObjects() {
     model_ = new Model();
-    model_->LoadSceneFromFile("utah-teapot.obj");
+    model_->LoadSceneFromFile("models/utah-teapot.obj");
     model_->Initialize();
     model_->SetPosition(0.0f, 0.0f, 0.0f);
 
     model_small_ = new Model();
-    model_small_->LoadSceneFromFile("cone.obj");
+    model_small_->LoadSceneFromFile("models/cone.obj");
     model_small_->Initialize();
     model_small_->SetPosition(20.0f, 0.0f, 20.0f);
     model_small_->SetScale(0.25f);
