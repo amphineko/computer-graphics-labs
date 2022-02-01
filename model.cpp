@@ -2,10 +2,16 @@
 
 #include "model.h"
 
-#define IS_NAN(x) (std::fpclassify(x) == FP_NAN)
+#define NOT_NAN(x) (std::fpclassify(x) != FP_NAN)
 
 Mesh::Mesh(aiMesh *mesh, const aiScene *scene) {
-    vertices_.reserve(mesh->mNumVertices);
+    auto default_normal = glm::vec3(0.0f, 0.0f, 1.0f);
+    auto default_tangent = glm::vec3(1.0f, 0.0f, 0.0f);
+    auto default_bitangent = glm::vec3(0.0f, 1.0f, 0.0f);
+    auto default_tex_coord = glm::vec2(0.0f, 0.0f);
+    // TODO: what should be the default values for them?
+
+    vertices_.reserve(mesh->mNumVertices); // optimization: pre-allocate memory for insertions
 
     for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
         vertices_.emplace_back(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z));
@@ -13,41 +19,46 @@ Mesh::Mesh(aiMesh *mesh, const aiScene *scene) {
 
     if (mesh->mNormals) {
         for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-            if (IS_NAN(mesh->mNormals[i].x))
-                continue;
-            vertices_[i].normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+            vertices_[i].normal =
+                NOT_NAN(mesh->mNormals[i].x)
+                    ? glm::normalize(glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z))
+                    : default_normal;
+            // TODO: should we normalize the normals?
         }
     }
 
     if (mesh->mTextureCoords[0]) {
         for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-            if (IS_NAN(mesh->mTextureCoords[0][i].x))
-                continue;
-            vertices_[i].tex_coord = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+            vertices_[i].tex_coord = NOT_NAN(mesh->mTextureCoords[0][i].x)
+                                         // NOTE: don't normalize tex coords
+                                         ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y)
+                                         : default_tex_coord;
         }
     }
 
     if (mesh->mTangents) {
         for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-            if (IS_NAN(mesh->mTangents[i].x))
-                continue;
-            vertices_[i].tangent = glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z);
+            vertices_[i].tangent =
+                NOT_NAN(mesh->mTangents[i].x)
+                    ? glm::normalize(glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z))
+                    : default_tangent;
         }
     }
 
     if (mesh->mBitangents) {
         for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-            if (IS_NAN(mesh->mBitangents[i].x))
-                continue;
-            vertices_[i].bitangent = glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z);
+            vertices_[i].bitangent =
+                NOT_NAN(mesh->mBitangents[i].x)
+                    ? glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z)
+                    : default_bitangent;
         }
     }
 
     unsigned int totalIndices = 0;
     for (unsigned int i = 0; i < mesh->mNumFaces; ++i) {
-        totalIndices += mesh->mFaces[i].mNumIndices;
+        totalIndices += mesh->mFaces[i].mNumIndices; // collect indices count
     }
-    indices_.reserve(indices_.size() + totalIndices);
+    indices_.reserve(indices_.size() + totalIndices); // optimization: pre-allocate memory for insertions
     for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
         for (int j = 0; j < mesh->mFaces[i].mNumIndices; j++) {
             indices_.push_back(mesh->mFaces[i].mIndices[j]);
