@@ -3,13 +3,13 @@
 UtahProgram::UtahProgram() {
     delete (FirstPersonCamera *)camera_;
 
-    camera_ = new ThirdPersonCamera(0.0f, 37.5f, 75.0f, -30.0f, 270.0f);
+    camera_ = new ThirdPersonCamera(0.0f, 50.0f, 60.0f, -30.0f, 270.0f);
 }
 
 void UtahProgram::Draw() {
     Program::Draw();
 
-    if (model_cone_ == nullptr || model_teapot_ == nullptr) {
+    if (model_obj1_ == nullptr || model_obj2_ == nullptr) {
         return;
     }
 
@@ -17,44 +17,61 @@ void UtahProgram::Draw() {
     auto delta_time = current_clock - last_frame_clock_;
     last_frame_clock_ = current_clock;
 
-    if (shader_basic_ != nullptr) {
-        shader_basic_->Use();
-    }
+    current_shader_->Use();
 
-    auto cone_roll = model_cone_->GetRoll() + float(delta_time) * 100.0f;
-    model_cone_->SetRotation(-90.0f, cone_roll, 0.0f);
-    model_cone_->Draw(shader_basic_);
+    current_shader_->SetVec3("light_ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+    current_shader_->SetVec3("light_diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
+    current_shader_->SetVec3("light_specular", glm::vec3(1.0f, 1.0f, 1.0f));
 
-    auto teapot_yaw = model_teapot_->GetYaw() + float(delta_time) * 100.0f;
-    model_teapot_->SetRotation(0.0f, 0.0f, teapot_yaw);
-    model_teapot_->Draw(shader_basic_);
+    auto obj1_yaw = model_obj1_->GetYaw() + float(delta_time) * 100.0f;
+    model_obj1_->SetRotation(-90.0f, 0.0f, obj1_yaw);
+    model_obj1_->Draw(current_shader_);
+
+    auto obj2_yaw = model_obj2_->GetYaw() + float(delta_time) * 100.0f;
+    model_obj2_->SetRotation(0.0f, 0.0f, obj2_yaw);
+    model_obj2_->Draw(current_shader_);
+
+    HandleKeyboardInput(0);
 }
 
-bool UtahProgram::Initialize(std::string window_title) {
+bool UtahProgram::Initialize(const std::string *window_title) {
     if (!Program::Initialize(window_title)) {
         return false;
     }
 
-    shader_basic_ = new ShaderProgram("utah-basic.vert", "utah-basic.frag");
-    if (!shader_basic_->IsReady()) {
-        shader_basic_->~ShaderProgram();
-        return false;
-    }
-    shaders_.push_back(shader_basic_);
+    shaders_.push_back(new ShaderProgram("utah-phong.vert", "utah-cook-torrance.frag"));
+    shaders_.push_back(new ShaderProgram("utah-phong.vert", "utah-phong.frag"));
+    shaders_.push_back(new ShaderProgram("utah-phong.vert", "utah-gooch.frag"));
+    shaders_.push_back(new ShaderProgram("utah-phong.vert", "utah-normal.frag"));
+    current_shader_ = shaders_[0];
 
-    model_cone_ = new Model();
-    model_cone_->LoadSceneFromFile("models/cone/scene.gltf");
-    model_cone_->Initialize();
-    model_cone_->SetPosition(20.0f, -5.0f, 20.0f);
-    model_cone_->SetScale(0.75f);
+    model_obj1_ = new Model();
+    model_obj1_->LoadSceneFromFile("models/fancy_teapot/scene.gltf");
+    model_obj1_->Initialize();
+    model_obj1_->SetPosition(20.0f, 0.0f, 0.0f);
+    model_obj1_->SetScale(2.0f);
 
-    model_teapot_ = new Model();
-    model_teapot_->LoadSceneFromFile("models/utah-teapot.obj");
-    model_teapot_->Initialize();
-    model_teapot_->SetPosition(0.0f, 0.0f, 0.0f);
-    model_teapot_->SetScale(1.0f);
+    model_obj2_ = new Model();
+    model_obj2_->LoadSceneFromFile("models/teapot/scene.gltf");
+    model_obj2_->Initialize();
+    model_obj2_->SetPosition(-20.0f, 0.0f, 0.0f);
+    model_obj2_->SetScale(2.0f);
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     return true;
+}
+
+void UtahProgram::HandleKeyboardInput(double) {
+    int shader_id = -1;
+    if (glfwGetKey(window_, GLFW_KEY_F1) == GLFW_PRESS)
+        shader_id = 0;
+    if (glfwGetKey(window_, GLFW_KEY_F2) == GLFW_PRESS)
+        shader_id = 1;
+    if (glfwGetKey(window_, GLFW_KEY_F3) == GLFW_PRESS)
+        shader_id = 2;
+    if (glfwGetKey(window_, GLFW_KEY_F4) == GLFW_PRESS)
+        shader_id = 3;
+    if (shader_id != -1)
+        current_shader_ = shaders_[std::max(0, std::min((int)shaders_.size(), shader_id))];
 }

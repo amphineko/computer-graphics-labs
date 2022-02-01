@@ -16,7 +16,7 @@ class Program {
 public:
     Program();
 
-    virtual bool Initialize(std::string window_title);
+    virtual bool Initialize(const std::string *window_title);
 
     void Run();
 
@@ -25,7 +25,7 @@ protected:
 
     std::vector<ShaderProgram *> shaders_{};
 
-    int display_width = 1024, display_height = 768;
+    int display_width = 1920, display_height = 1080;
     bool mouse_hold = false;
 
     GLFWwindow *window_ = nullptr;
@@ -33,6 +33,8 @@ protected:
     virtual void Draw();
 
 private:
+    std::string window_title_;
+
     static void HandleFramebufferSizeChange(GLFWwindow *window, int width, int height);
 
     void HandleKeyboardInput(double delta_frame);

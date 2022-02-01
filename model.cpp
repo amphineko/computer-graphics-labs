@@ -232,6 +232,7 @@ Model::Model() { UpdateModelMatrix(); }
 void Model::Draw(ShaderProgram *shader) {
     shader->SetMat4("model", model_matrix_);
     shader->SetMat4("model_normal", glm::transpose(glm::inverse(model_matrix_)));
+    shader->SetMat4("model_rotation", model_rotation_);
     for (auto &mesh : meshes_) {
         mesh.Draw(shader);
     }
@@ -292,6 +293,6 @@ void Model::SetScale(float scale) {
 }
 
 void Model::UpdateModelMatrix() {
-    auto rotation = glm::yawPitchRoll(glm::radians(yaw_), glm::radians(pitch_), glm::radians(roll_));
-    model_matrix_ = glm::scale(glm::translate(glm::mat4(1.0f), position_), scale_) * rotation;
+    model_rotation_ = glm::yawPitchRoll(glm::radians(yaw_), glm::radians(pitch_), glm::radians(roll_));
+    model_matrix_ = glm::scale(glm::translate(glm::mat4(1.0f), position_), scale_) * model_rotation_;
 }

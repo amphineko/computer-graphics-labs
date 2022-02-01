@@ -16,7 +16,7 @@ public:
         vertices_size_ = sizeof(program_vertices_);
     }
 
-    bool Initialize(std::string window_title) override {
+    bool Initialize(const std::string *window_title) override {
         if (!Program::Initialize(window_title)) {
             return false;
         }
@@ -98,7 +98,8 @@ private:
 
 int main() {
     CS7GV5Lab1 program;
-    if (!program.Initialize("CS7GV5 Lab 1: Hello Triangle")) {
+    std::string window_title = "CS7GV5 Lab 1";
+    if (!program.Initialize(&window_title)) {
         return -1;
     }
     program.Run();

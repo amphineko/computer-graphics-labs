@@ -94,6 +94,8 @@ private:
     glm::vec3 position_ = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 scale_ = glm::vec3(1.0f);
     float pitch_ = 0, roll_ = 0, yaw_ = 0;
+
+    glm::mat4 model_rotation_ = glm::mat4(1.0f);
     glm::mat4 model_matrix_ = glm::mat4(1.0f);
 
     void LoadNode(aiNode *node, const aiScene *scene);

@@ -9,18 +9,20 @@ class UtahProgram : public Program {
 public:
     UtahProgram();
 
-    bool Initialize(std::string window_title) override;
+    bool Initialize(const std::string *window_title) override;
 
 protected:
     void Draw() override;
 
 private:
-    ShaderProgram *shader_basic_ = nullptr;
-
-    Model *model_cone_ = nullptr;
-    Model *model_teapot_ = nullptr;
+    Model *model_obj1_ = nullptr;
+    Model *model_obj2_ = nullptr;
 
     double last_frame_clock_ = 0.0;
+
+    ShaderProgram *current_shader_ = nullptr;
+
+    void HandleKeyboardInput(double frame_time);
 };
 
 #endif

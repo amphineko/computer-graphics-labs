@@ -2,7 +2,8 @@
 
 int main() {
     UtahProgram program;
-    program.Initialize("Lab: Utah Teapot");
+    std::string window_title = "Lab: Utah Teapot";
+    program.Initialize(&window_title);
     program.Run();
     return 0;
 }

@@ -3,7 +3,9 @@
 
 Program::Program() { camera_ = new FirstPersonCamera(0, 0, 3, 0, 270); }
 
-bool Program::Initialize(std::string window_title) {
+bool Program::Initialize(const std::string *window_title) {
+    window_title_ = *window_title;
+
     if (!glfwInit()) {
         std::cerr << "FATAL: Failed to initialize GLFW" << std::endl;
         return false;
@@ -16,7 +18,7 @@ bool Program::Initialize(std::string window_title) {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    window_ = glfwCreateWindow(display_width, display_height, window_title.c_str(), nullptr, nullptr);
+    window_ = glfwCreateWindow(display_width, display_height, window_title->c_str(), nullptr, nullptr);
     if (window_ == nullptr) {
         std::cerr << "FATAL: Failed to open GLFW window." << std::endl;
         glfwTerminate();
@@ -39,12 +41,20 @@ bool Program::Initialize(std::string window_title) {
 }
 
 void Program::Run() {
-    auto last_frame_time = glfwGetTime();
+    auto last_frame_time = glfwGetTime(), last_fps_time = last_frame_time;
+    auto fps = 0;
 
     while (!glfwWindowShouldClose(window_)) {
         auto current_time = glfwGetTime();
         auto frame_time = current_time - last_frame_time;
         last_frame_time = current_time;
+
+        ++fps;
+        if (current_time - last_fps_time >= 1.0) {
+            glfwSetWindowTitle(window_, (window_title_ + " [FPS: " + std::to_string(fps) + "]").c_str());
+            fps = 0;
+            last_fps_time = current_time;
+        }
 
         HandleKeyboardInput(frame_time);
         HandleMouseInput();
@@ -61,7 +71,7 @@ void Program::Run() {
 
             shader->SetVec3("camera_position", camera_->GetPosition());
             shader->SetVec3("light_direction", glm::vec3(0.0f, 0.0f, 0.0f));
-            shader->SetVec3("light_position", glm::vec3(10.0f, 25.0f, 50.0f));
+            shader->SetVec3("light_position", glm::vec3(0.0f, 25.0f, 25.0f));
         }
 
         Draw();

@@ -8,18 +8,19 @@ layout(location = 4) in vec3 vBitangent;
 
 out vec3 fPosition;
 out vec3 fNormal;
-out vec2 fTexCoords;
+out vec2 fTexCoord;
 out vec3 fTangent;
 out vec3 fBitangent;
 
-uniform mat4 model;// model transform
-uniform mat4 model_normal;// transpose(inverse(model transform))
+uniform mat4 model;
+uniform mat4 model_normal;
+uniform mat4 model_rotation;
 uniform mat4 view;
 uniform mat4 projection;
 
 void main() {
     fPosition = vPosition;
-    fTexCoords = vTexCoord;
+    fTexCoord = vTexCoord;
 
     fNormal = vNormal;
     fTangent = vTangent;
