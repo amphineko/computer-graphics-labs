@@ -1,16 +1,15 @@
 #version 330 core
 
-in vec3 vPos;
-in vec4 vColor;
+layout(location = 0) in vec3 vPosition;
+layout(location = 1) in vec4 vColor;
 
-out vec4 color;
+out vec4 fColor;
 
 uniform mat4 model;
-uniform mat4 projection;
 uniform mat4 view;
+uniform mat4 projection;
 
-void main()
-{
-    gl_Position = projection * view * vec4(vPos, 1.0);
-    color = vColor;
+void main() {
+    gl_Position = projection * view * model * vec4(vPosition, 1.0);
+    fColor = vColor;
 }

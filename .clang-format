@@ -1,0 +1,9 @@
+---
+BasedOnStyle: LLVM
+AccessModifierOffset: -4
+AlignAfterOpenBracket: true
+AlignTrailingComments: true
+BinPackArguments: false
+BinPackParameters: false
+ColumnLimit: 120
+IndentWidth: "4"

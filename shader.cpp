@@ -1,7 +1,7 @@
+#include "shader.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include "shader.h"
 
 ShaderProgram::ShaderProgram(const char *vertexShaderPath, const char *fragmentShaderPath) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -83,12 +83,4 @@ bool ShaderProgram::EnsureProgramLinked(GLuint program) {
     }
 
     return true;
-}
-
-bool ShaderProgram::IsReady() const {
-    return program_ != 0;
-}
-
-void ShaderProgram::Use() const {
-    glUseProgram(this->program_);
 }

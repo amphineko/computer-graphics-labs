@@ -1,16 +1,7 @@
 #include "program.h"
 #include "model.h"
 
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
-
-Program::Program(const char *vertex_shader_path, const char *fragment_shader_path) {
-    camera_ = new Camera(0, 0, 3, 0, 270);
-
-    vertex_shader_path_ = new char[strlen(vertex_shader_path) + 1];
-    strcpy(vertex_shader_path_, vertex_shader_path);
-    fragment_shader_path_ = new char[strlen(fragment_shader_path) + 1];
-    strcpy(fragment_shader_path_, fragment_shader_path);
-}
+Program::Program() { camera_ = new FirstPersonCamera(0, 0, 3, 0, 270); }
 
 bool Program::Initialize(std::string window_title) {
     if (!glfwInit()) {
@@ -44,22 +35,6 @@ bool Program::Initialize(std::string window_title) {
         return false;
     }
 
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    shader_ = new ShaderProgram(vertex_shader_path_, fragment_shader_path_);
-    if (!shader_->IsReady()) {
-        std::cerr << "FATAL: Failed to initialize shader" << std::endl;
-        glfwTerminate();
-        return false;
-    }
-    shader_->Use();
-    std::cout << "INFO: Shader program is ready" << std::endl;
-
-    InitializeObjects();
-    std::cout << "INFO: Object buffers are ready" << std::endl;
-
     return true;
 }
 
@@ -74,49 +49,35 @@ void Program::Run() {
         HandleKeyboardInput(frame_time);
         HandleMouseInput();
 
-        auto aspect = (float) display_width / (float) display_height;
-        auto zoom = glm::radians((float) camera_->Zoom);
-        auto projection = glm::perspective(zoom, aspect, 0.1f, 100.0f);
-        shader_->SetMat4("projection", projection);
+        auto aspect = (float)display_width / (float)display_height;
+        auto zoom = glm::radians((float)camera_->zoom);
+        auto projection = glm::perspective(zoom, aspect, 0.1f, 500.0f);
 
         auto view = camera_->GetViewMatrix();
-        shader_->SetMat4("view", view);
+
+        for (auto &shader : shaders_) {
+            shader->SetMat4("projection", projection);
+            shader->SetMat4("view", view);
+
+            shader->SetVec3("camera_position", camera_->GetPosition());
+            shader->SetVec3("light_direction", glm::vec3(0.0f, 0.0f, 0.0f));
+            shader->SetVec3("light_position", glm::vec3(10.0f, 25.0f, 50.0f));
+        }
 
         Draw();
-        glfwSwapBuffers(window_);
 
+        glfwSwapBuffers(window_);
         glfwPollEvents();
     }
 }
 
 void Program::Draw() {
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-}
-
-void Program::InitializeObjects() {
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices_size_, vertices_, GL_STATIC_DRAW);
-
-    auto pos_loc = glGetAttribLocation(shader_->GetProgram(), "vPos");
-    glVertexAttribPointer(pos_loc, 3, GL_FLOAT, GL_FALSE, sizeof(simple_vertex_t), BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(pos_loc);
-
-    auto color_loc = glGetAttribLocation(shader_->GetProgram(), "vColor");
-    glVertexAttribPointer(color_loc,
-                          4,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(simple_vertex_t),
-                          BUFFER_OFFSET(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(color_loc);
 }
 
 void Program::HandleFramebufferSizeChange(GLFWwindow *window, int width, int height) {
-    auto that = (Program *) glfwGetWindowUserPointer(window);
+    auto that = (Program *)glfwGetWindowUserPointer(window);
     std::cout << "INFO: Resized window to " << width << "x" << height << std::endl;
     that->display_width = width;
     that->display_height = height;
@@ -129,29 +90,37 @@ void Program::HandleKeyboardInput(double delta_frame) {
         glfwSetWindowShouldClose(window_, true);
     }
 
+    double forward = 0, right = 0, up = 0;
+
     // w s to translate forward and backward
     if (glfwGetKey(window_, GLFW_KEY_W) == GLFW_PRESS) {
-        camera_->ApplyTranslate(CAMERA_MOVEMENT_FORWARD, delta_frame);
+        forward += delta_frame;
     }
     if (glfwGetKey(window_, GLFW_KEY_S) == GLFW_PRESS) {
-        camera_->ApplyTranslate(CAMERA_MOVEMENT_BACKWARD, delta_frame);
+        forward -= delta_frame;
     }
 
-    // a d to translate left and right
+    // a d to translate left and right_
     if (glfwGetKey(window_, GLFW_KEY_A) == GLFW_PRESS) {
-        camera_->ApplyTranslate(CAMERA_MOVEMENT_LEFT, delta_frame);
+        right -= delta_frame;
     }
     if (glfwGetKey(window_, GLFW_KEY_D) == GLFW_PRESS) {
-        camera_->ApplyTranslate(CAMERA_MOVEMENT_RIGHT, delta_frame);
+        right += delta_frame;
     }
 
-    // r f to translate up and down
+    // r f to translate up_ and down
     if (glfwGetKey(window_, GLFW_KEY_R) == GLFW_PRESS) {
-        camera_->ApplyTranslate(CAMERA_MOVEMENT_UP, delta_frame);
+        up += delta_frame;
     }
     if (glfwGetKey(window_, GLFW_KEY_F) == GLFW_PRESS) {
-        camera_->ApplyTranslate(CAMERA_MOVEMENT_DOWN, delta_frame);
+        up -= delta_frame;
     }
+
+    if (abs(forward) > 0.01f || abs(right) > 0.01f || abs(up) > 0.01f) {
+        camera_->Translate((float)forward, (float)right, (float)up);
+    }
+
+    // TODO: reset camera to initial position_
 }
 
 void Program::HandleMouseInput() {
@@ -169,7 +138,7 @@ void Program::HandleMouseInput() {
 
             mouse_x = (mouse_x - center_x) / display_width;
             mouse_y = (mouse_y - center_y) / display_height;
-            camera_->ApplyRotate(float(mouse_x), float(-mouse_y));
+            camera_->Rotate(float(-mouse_y), float(mouse_x));
         }
     } else {
         glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

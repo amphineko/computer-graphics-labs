@@ -14,8 +14,9 @@ include_directories(vendors)
 add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 
 set(project_shared_sources
-        camera.cpp
-        camera.h
+        cameras/camera_fp.h
+        cameras/camera_tp.h
+        cameras/common.h
         model.cpp
         model.h
         program.cpp

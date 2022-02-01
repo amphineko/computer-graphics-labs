@@ -1,8 +1,9 @@
 #ifndef UTAH_H_
 #define UTAH_H_
 
-#include "program.h"
+#include "cameras/camera_tp.h"
 #include "model.h"
+#include "program.h"
 
 class UtahProgram : public Program {
 public:
@@ -13,12 +14,11 @@ public:
 protected:
     void Draw() override;
 
-    void InitializeObjects() override;
-
 private:
-    Model *floor_ = nullptr;
-    Model *model_ = nullptr;
-    Model *model_small_ = nullptr;
+    ShaderProgram *shader_basic_ = nullptr;
+
+    Model *model_cone_ = nullptr;
+    Model *model_teapot_ = nullptr;
 
     double last_frame_clock_ = 0.0;
 };

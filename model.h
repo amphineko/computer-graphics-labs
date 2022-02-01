@@ -1,6 +1,7 @@
-#ifndef MESH_H_
-#define MESH_H_
+#ifndef MODEL_H_
+#define MODEL_H_
 
+#include "shader.h"
 #include <GL/glew.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -10,7 +11,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "shader.h"
 
 struct MeshVertex {
     [[maybe_unused]] glm::vec3 position;
@@ -20,15 +20,8 @@ struct MeshVertex {
     [[maybe_unused]] glm::vec3 bitangent;
 
     explicit MeshVertex(glm::vec3 position)
-        : position(position),
-          normal(glm::vec3(0.0f)),
-          tex_coord(glm::vec2(0.0f)),
-          tangent(glm::vec3(0.0f)),
+        : position(position), normal(glm::vec3(0.0f)), tex_coord(glm::vec2(0.0f)), tangent(glm::vec3(0.0f)),
           bitangent(glm::vec3(0.0f)) {}
-
-//    MeshVertex(
-//        glm::vec3 position, glm::vec3 normal, glm::vec2 tex_coord, glm::vec3 tangent, glm::vec3 bitangent
-//    ) : position(position), normal(normal), tex_coord(tex_coord), tangent(tangent), bitangent(bitangent) {}
 };
 
 typedef unsigned int MeshTextureType;
@@ -80,6 +73,10 @@ public:
 
     [[nodiscard]] glm::vec3 GetPosition() const { return position_; }
 
+    [[nodiscard]] glm::vec3 GetScale() const { return scale_; }
+
+    [[nodiscard]] float GetPitch() const { return pitch_; }
+
     [[nodiscard]] float GetRoll() const { return roll_; }
 
     [[nodiscard]] float GetYaw() const { return yaw_; }
@@ -105,4 +102,4 @@ private:
     void UpdateModelMatrix();
 };
 
-#endif //MESH_H_
+#endif // MODEL_H_

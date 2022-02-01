@@ -1,15 +1,15 @@
 #include "utah.h"
 
-UtahProgram::UtahProgram() : Program("utah.vert", "utah.frag") {
-    camera_->SetPosition(5.0f, 30.0f, 50.0f);
-    camera_->SetRotation(-30.0f, 270.0f);
-    camera_->TranslateSpeed = 10.0f;
+UtahProgram::UtahProgram() {
+    delete (FirstPersonCamera *)camera_;
+
+    camera_ = new ThirdPersonCamera(0.0f, 37.5f, 75.0f, -30.0f, 270.0f);
 }
 
 void UtahProgram::Draw() {
     Program::Draw();
 
-    if (model_ == nullptr || model_small_ == nullptr) {
+    if (model_cone_ == nullptr || model_teapot_ == nullptr) {
         return;
     }
 
@@ -17,15 +17,17 @@ void UtahProgram::Draw() {
     auto delta_time = current_clock - last_frame_clock_;
     last_frame_clock_ = current_clock;
 
-    shader_->SetVec3("camera_position", camera_->GetPosition());
-    shader_->SetVec3("light_direction", glm::vec3(0.0f, 0.0f, 0.0f));
-    shader_->SetVec3("light_position", glm::vec3(5.0f, 30.0f, 50.0f));
+    if (shader_basic_ != nullptr) {
+        shader_basic_->Use();
+    }
 
-    model_->SetRotation(0, 0, model_->GetYaw() + float(delta_time) * 500.0f);
-    model_->Draw(shader_);
+    auto cone_roll = model_cone_->GetRoll() + float(delta_time) * 100.0f;
+    model_cone_->SetRotation(-90.0f, cone_roll, 0.0f);
+    model_cone_->Draw(shader_basic_);
 
-    model_small_->SetRotation(-90.0f, model_small_->GetRoll() - float(delta_time) * 100.0f, 0.0f);
-    model_small_->Draw(shader_);
+    auto teapot_yaw = model_teapot_->GetYaw() + float(delta_time) * 100.0f;
+    model_teapot_->SetRotation(0.0f, 0.0f, teapot_yaw);
+    model_teapot_->Draw(shader_basic_);
 }
 
 bool UtahProgram::Initialize(std::string window_title) {
@@ -33,20 +35,26 @@ bool UtahProgram::Initialize(std::string window_title) {
         return false;
     }
 
+    shader_basic_ = new ShaderProgram("utah-basic.vert", "utah-basic.frag");
+    if (!shader_basic_->IsReady()) {
+        shader_basic_->~ShaderProgram();
+        return false;
+    }
+    shaders_.push_back(shader_basic_);
+
+    model_cone_ = new Model();
+    model_cone_->LoadSceneFromFile("models/cone/scene.gltf");
+    model_cone_->Initialize();
+    model_cone_->SetPosition(20.0f, -5.0f, 20.0f);
+    model_cone_->SetScale(0.75f);
+
+    model_teapot_ = new Model();
+    model_teapot_->LoadSceneFromFile("models/utah-teapot.obj");
+    model_teapot_->Initialize();
+    model_teapot_->SetPosition(0.0f, 0.0f, 0.0f);
+    model_teapot_->SetScale(1.0f);
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     return true;
-}
-
-void UtahProgram::InitializeObjects() {
-    model_ = new Model();
-    model_->LoadSceneFromFile("models/utah-teapot.obj");
-    model_->Initialize();
-    model_->SetPosition(0.0f, 0.0f, 0.0f);
-
-    model_small_ = new Model();
-    model_small_->LoadSceneFromFile("models/cone/source/Conus_LP.fbx");
-    model_small_->Initialize();
-    model_small_->SetPosition(20.0f, 0.0f, 20.0f);
-    model_small_->SetScale(0.25f);
 }

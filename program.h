@@ -1,5 +1,5 @@
-#ifndef PROGRAM_H
-#define PROGRAM_H
+#ifndef PROGRAM_H_
+#define PROGRAM_H_
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -7,42 +7,32 @@
 #include <GLFW/glfw3.h>
 #include <cstring>
 #include <iostream>
+#include <vector>
 
-#include "camera.h"
+#include "cameras/camera_fp.h"
 #include "shader.h"
-
-struct simple_vertex_t {
-    GLfloat x, y, z, r, g, b, a;
-};
 
 class Program {
 public:
-    Program(const char *vertex_shader_path, const char *fragment_shader_path);
+    Program();
 
     virtual bool Initialize(std::string window_title);
 
     void Run();
 
 protected:
-    Camera *camera_;
-    ShaderProgram *shader_ = nullptr;
+    BaseCamera *camera_;
+
+    std::vector<ShaderProgram *> shaders_{};
 
     int display_width = 1024, display_height = 768;
     bool mouse_hold = false;
 
     GLFWwindow *window_ = nullptr;
 
-    simple_vertex_t *vertices_ = {};
-    GLint vertices_size_ = 0;
-
     virtual void Draw();
 
-    virtual void InitializeObjects();
-
 private:
-    char *vertex_shader_path_;
-    char *fragment_shader_path_;
-
     static void HandleFramebufferSizeChange(GLFWwindow *window, int width, int height);
 
     void HandleKeyboardInput(double delta_frame);
@@ -50,4 +40,4 @@ private:
     void HandleMouseInput();
 };
 
-#endif //PROGRAM_H
+#endif
