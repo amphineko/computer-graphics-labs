@@ -1,4 +1,4 @@
-#include "stbi/stb_image.h"
+#include <stbi/stb_image.h>
 
 #include "model.h"
 
