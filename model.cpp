@@ -281,10 +281,6 @@ void Model::SetScale(float scale) {
 }
 
 void Model::UpdateModelMatrix() {
-    model_matrix_ = glm::mat4(1.0f);
-    model_matrix_ = glm::translate(model_matrix_, position_);
-    model_matrix_ = glm::scale(model_matrix_, scale_);
-    model_matrix_ = glm::rotate(model_matrix_, glm::radians(pitch_), glm::vec3(1.0f, 0.0f, 0.0f));
-    model_matrix_ = glm::rotate(model_matrix_, glm::radians(roll_), glm::vec3(0.0f, 0.0f, 1.0f));
-    model_matrix_ = glm::rotate(model_matrix_, glm::radians(yaw_), glm::vec3(0.0f, 1.0f, 0.0f));
+    auto rotation = glm::yawPitchRoll(glm::radians(yaw_), glm::radians(pitch_), glm::radians(roll_));
+    model_matrix_ = glm::scale(glm::translate(glm::mat4(1.0f), position_), scale_) * rotation;
 }
