@@ -357,13 +357,13 @@
   ],
   "images": [
     {
-      "uri": "models/teapot/textures/utahTeapot_baseColor.png"
+      "uri": "textures/utahTeapot_baseColor.png"
     },
     {
-      "uri": "models/teapot/textures/utahTeapot_metallicRoughness.png"
+      "uri": "textures/utahTeapot_metallicRoughness.png"
     },
     {
-      "uri": "models/teapot/textures/utahTeapot_normal.png"
+      "uri": "textures/utahTeapot_normal.png"
     }
   ],
   "materials": [

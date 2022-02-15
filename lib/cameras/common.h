@@ -1,7 +1,7 @@
 #ifndef CAMERAS_COMMON_H_
 #define CAMERAS_COMMON_H_
 
-#include <glm/glm.hpp>
+#include "glm/glm.hpp"
 
 class BaseCamera {
 public:

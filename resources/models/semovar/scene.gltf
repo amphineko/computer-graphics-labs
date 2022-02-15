@@ -129,13 +129,13 @@
   ],
   "images": [
     {
-      "uri": "models/fancy_teapot/textures/initialShadingGroup_baseColor.png"
+      "uri": "textures/initialShadingGroup_baseColor.png"
     },
     {
-      "uri": "models/fancy_teapot/textures/initialShadingGroup_metallicRoughness.png"
+      "uri": "textures/initialShadingGroup_metallicRoughness.png"
     },
     {
-      "uri": "models/fancy_teapot/textures/initialShadingGroup_normal.png"
+      "uri": "textures/initialShadingGroup_normal.png"
     }
   ],
   "materials": [

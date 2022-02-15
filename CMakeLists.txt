@@ -14,19 +14,17 @@ include_directories(vendors)
 add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 
 set(project_shared_sources
-        cameras/camera_fp.h
-        cameras/camera_tp.h
-        cameras/common.h
-        model.cpp
-        model.h
-        program.cpp
-        program.h
-        shader.cpp
-        shader.h
-        utah.cpp
-        utah.h)
+        lib/cameras/camera_fp.h
+        lib/cameras/camera_tp.h
+        lib/cameras/common.h
+        lib/models/mesh.h
+        lib/models/node.h
+        lib/models/scene.h
+        lib/models/textures.h
+        lib/shaders/shader.h
+        lib/program.h)
 
-set(project_shared_files ${project_shared_sources})
+set(project_shared_files ${project_shared_sources} lib/stdafx.h)
 
 set(project_shared_libraries
         ${ASSIMP_LIBRARIES}
@@ -38,11 +36,8 @@ if (APPLE)
     set(shared_libraries ${shared_libraries} "-framework OpenGL")
 endif ()
 
-add_executable(cs7gv5_lab1 cs7gv5_lab1.cpp ${project_shared_files})
-target_link_libraries(cs7gv5_lab1 ${project_shared_libraries})
-
-add_executable(utah utah_main.cpp ${project_shared_files})
-target_link_libraries(utah ${project_shared_libraries})
+add_executable(transmittance transmittance.cpp ${project_shared_files} transmittance.cpp)
+target_link_libraries(transmittance ${project_shared_libraries})
 
 include(CMakePrintHelpers)
 cmake_print_variables(ASSIMP_INCLUDE_DIRS)
