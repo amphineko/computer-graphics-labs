@@ -5,7 +5,9 @@ class TransmittanceProgram : public Program {
 public:
     TransmittanceProgram() {
         delete (FirstPersonCamera *)camera_;
-        camera_ = new ThirdPersonCamera(0.0f, 5.0f, 25.0f, 0.0f, 270.0f);
+        camera_ = new ThirdPersonCamera(0.0f, 5.0f, 20.0f, 0.0f, 270.0f);
+        SetLight(glm::vec3(0.0f, 25.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+        SetLightCount(1);
     }
 
     bool Initialize(const std::string *window_title) override {
@@ -13,19 +15,20 @@ public:
             return false;
         }
 
-        shaders_.push_back(new ShaderProgram("transmittance.vert", "transmittance.frag"));
+        shaders_.push_back(new ShaderProgram("shaders/fresnel.vert", "shaders/fresnel.frag"));
 
         if (!Scene::CreateFromFile("resources/models/teapot/scene.gltf", scene_, texture_manager_)) {
             std::cout << "FATAL: Failed to load scene" << std::endl;
             return false;
         }
         scene_->Initialize();
+        scene_->GetRootNode()->Scale(1.0f);
 
         std::map<GLenum, std::string> env_map_files;
         env_map_files.emplace(GL_TEXTURE_CUBE_MAP_POSITIVE_X, "posx.jpeg");
         env_map_files.emplace(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, "negx.jpeg");
         env_map_files.emplace(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, "posy.jpeg");
-        env_map_files.emplace(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, "negy.jpeg");
+        env_map_files.emplace(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, "../checkerboard.png");
         env_map_files.emplace(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, "posz.jpeg");
         env_map_files.emplace(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, "negz.jpeg");
 
@@ -49,12 +52,12 @@ protected:
 
         shader->Use();
 
-        shader->SetFloat("fresnelEtaR", 0.63);
+        shader->SetFloat("fresnelEtaR", 0.60);
         shader->SetFloat("fresnelEtaG", 0.65);
-        shader->SetFloat("fresnelEtaB", 0.68);
-        shader->SetFloat("fresnelBias", 0.5);
+        shader->SetFloat("fresnelEtaB", 0.70);
+        shader->SetFloat("fresnelBias", 0.1);
         shader->SetFloat("fresnelPower", 5.0);
-        shader->SetFloat("fresnelScale", 2.5);
+        shader->SetFloat("fresnelScale", 1.0);
 
         scene_->GetRootNode()->Rotate(0, 0, delta_time * 0.5);
         scene_->Draw(shader);

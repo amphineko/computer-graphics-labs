@@ -52,6 +52,7 @@ public:
     void Draw(const glm::mat4 parent_transform, GLuint parent_texture_unit, ShaderProgram *shader) {
         auto local_transform = parent_transform * transform_;
         shader->SetMat4("modelMatrix", local_transform);
+        shader->SetMat4("modelNormalMatrix", glm::transpose(glm::inverse(local_transform)));
 
         auto texture_unit = parent_texture_unit;
         if (env_map_.role == NODE_TEXTURE_ROLE_ENV_MAP) {
@@ -99,6 +100,12 @@ public:
 
     void Rotate(float delta_pitch, float delta_yaw, float delta_roll) {
         transform_ = transform_ * glm::yawPitchRoll(delta_yaw, delta_pitch, delta_roll);
+    }
+
+    void Scale(float delta_scale) { transform_ = glm::scale(transform_, glm::vec3(delta_scale)); }
+
+    void Translate(float delta_x, float delta_y, float delta_z) {
+        transform_ = glm::translate(transform_, glm::vec3(delta_x, delta_y, delta_z));
     }
 
 private:

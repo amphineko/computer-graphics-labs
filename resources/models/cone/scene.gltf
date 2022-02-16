@@ -122,13 +122,13 @@
   ],
   "images": [
     {
-      "uri": "models/cone/textures/blinn2_baseColor.png"
+      "uri": "textures/blinn2_baseColor.png"
     },
     {
-      "uri": "models/cone/textures/blinn2_metallicRoughness.png"
+      "uri": "textures/blinn2_metallicRoughness.png"
     },
     {
-      "uri": "models/cone/textures/blinn2_normal.png"
+      "uri": "textures/blinn2_normal.png"
     }
   ],
   "materials": [

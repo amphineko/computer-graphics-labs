@@ -6,6 +6,8 @@
 #include "shaders/shader.h"
 #include <GLFW/glfw3.h>
 
+#define MAX_N_LIGHTS 16
+
 class Program {
 public:
     Program() { camera_ = new FirstPersonCamera(0, 0, 3, 0, 270); }
@@ -85,8 +87,10 @@ public:
 
                 shader->SetVec3("cameraPosition", camera_->GetPosition());
 
-                shader->SetVec3("lightDirection", light_direction_);
-                shader->SetVec3("lightPosition", light_position_);
+                shader->SetInt("nLights", n_lights_);
+                shader->SetVec3Array("lightDiffuses", MAX_N_LIGHTS, light_diffuses_);
+                shader->SetVec3Array("lightDirections", MAX_N_LIGHTS, light_directions_);
+                shader->SetVec3Array("lightPositions", MAX_N_LIGHTS, light_positions_);
             }
 
             Draw();
@@ -106,28 +110,39 @@ protected:
     int display_width = 1024, display_height = 768;
     bool mouse_hold = false;
 
-    glm::vec3 light_direction_ = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 light_position_ = glm::vec3(20.0f, 20.0f, 20.0f);
-
     GLFWwindow *window_ = nullptr;
 
     virtual void Draw() {
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
 
-        for (auto &shader : shaders_) {
-            shader->SetVec3("light_direction", light_direction_);
-            shader->SetVec3("light_position", light_position_);
+    void SetLight(glm::vec3 position, glm::vec3 direction) { SetLight(0, position, direction); }
+
+    void SetLight(size_t index, glm::vec3 position, glm::vec3 direction) {
+        SetLight(index, position, direction, glm::vec3(1.0f));
+    }
+
+    void SetLight(size_t index, glm::vec3 position, glm::vec3 direction, glm::vec3 diffuse) {
+        if (index >= MAX_N_LIGHTS) {
+            std::cerr << "WARNING: Light index " << index << " is out of range" << std::endl;
+            return;
         }
+
+        light_diffuses_[index] = diffuse;
+        light_directions_[index] = direction;
+        light_positions_[index] = position;
     }
 
-    void SetLight(glm::vec3 light_position, glm::vec3 light_direction) {
-        light_position_ = light_position;
-        light_direction_ = light_direction;
-    }
+    void SetLightCount(size_t n_lights) { n_lights_ = n_lights; }
 
 private:
     std::string window_title_;
+
+    GLint n_lights_ = 1;
+    glm::vec3 light_diffuses_[MAX_N_LIGHTS] = {glm::vec3(1.0f, 1.0f, 1.0f)};
+    glm::vec3 light_directions_[MAX_N_LIGHTS] = {glm::vec3(0, 0, 0)};
+    glm::vec3 light_positions_[MAX_N_LIGHTS] = {glm::vec3(0, 0, 0)};
 
     static void HandleFramebufferSizeChange(GLFWwindow *window, int width, int height) {
         auto that = (Program *)glfwGetWindowUserPointer(window);

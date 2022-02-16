@@ -24,7 +24,7 @@ set(project_shared_sources
         lib/shaders/shader.h
         lib/program.h)
 
-set(project_shared_files ${project_shared_sources} lib/stdafx.h)
+set(project_shared_files ${project_shared_sources})
 
 set(project_shared_libraries
         ${ASSIMP_LIBRARIES}
@@ -36,8 +36,11 @@ if (APPLE)
     set(shared_libraries ${shared_libraries} "-framework OpenGL")
 endif ()
 
-add_executable(transmittance transmittance.cpp ${project_shared_files} transmittance.cpp)
+add_executable(transmittance transmittance.cpp ${project_shared_files})
 target_link_libraries(transmittance ${project_shared_libraries})
+
+add_executable(normalmap normalmap.cpp ${project_shared_files})
+target_link_libraries(normalmap ${project_shared_libraries})
 
 include(CMakePrintHelpers)
 cmake_print_variables(ASSIMP_INCLUDE_DIRS)

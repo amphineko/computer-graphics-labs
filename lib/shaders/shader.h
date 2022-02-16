@@ -59,6 +59,10 @@ public:
         glUniform3f(glGetUniformLocation(program_, name), vec.x, vec.y, vec.z);
     }
 
+    void SetVec3Array(const char *name, GLsizei count, const glm::vec3 *vec) const {
+        glUniform3fv(glGetUniformLocation(program_, name), count, glm::value_ptr(vec[0]));
+    }
+
 private:
     GLuint program_ = 0;
 
