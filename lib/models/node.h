@@ -57,7 +57,7 @@ public:
         auto texture_unit = parent_texture_unit;
         if (env_map_.role == NODE_TEXTURE_ROLE_ENV_MAP) {
             glActiveTexture(GL_TEXTURE0 + texture_unit);
-            glBindTexture(NODE_TEXTURE_ROLE_ENV_MAP, env_map_.name);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, env_map_.name);
             shader->SetInt("envMap", GLint(texture_unit));
             ++texture_unit;
         }
@@ -103,6 +103,8 @@ public:
     }
 
     void Scale(float delta_scale) { transform_ = glm::scale(transform_, glm::vec3(delta_scale)); }
+
+    void SetEnvMap(NodeTexture env_map) { env_map_ = env_map; }
 
     void Translate(float delta_x, float delta_y, float delta_z) {
         transform_ = glm::translate(transform_, glm::vec3(delta_x, delta_y, delta_z));

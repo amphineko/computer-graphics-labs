@@ -10,6 +10,8 @@ find_package(assimp 5 REQUIRED)
 include_directories(${ASSIMP_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${GLFW_INCLUDE_DIRS} ${OpenGL_INCLUDE_DIRS})
 
 include_directories(vendors)
+include_directories(vendors/glad/include)
+include_directories(vendors/imgui)
 
 add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 
@@ -24,7 +26,15 @@ set(project_shared_sources
         lib/shaders/shader.h
         lib/program.h)
 
-set(project_shared_files ${project_shared_sources})
+set(project_shared_files
+        vendors/glad/src/glad.c
+        vendors/imgui/imgui.cpp
+        vendors/imgui/imgui_draw.cpp
+        vendors/imgui/imgui_tables.cpp
+        vendors/imgui/imgui_widgets.cpp
+        vendors/imgui/backends/imgui_impl_glfw.cpp
+        vendors/imgui/backends/imgui_impl_opengl3.cpp
+        ${project_shared_sources})
 
 set(project_shared_libraries
         ${ASSIMP_LIBRARIES}

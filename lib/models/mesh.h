@@ -156,9 +156,7 @@ private:
         LoadTexture(material, aiTextureType_HEIGHT, MESH_TEXTURE_ROLE_HEIGHT, base_path, manager);
 
         if (textures_.empty()) {
-            std::cout << "DEBUG: Mesh has no textures" << std::endl;
-        } else {
-            std::cout << "DEBUG: Mesh has " << textures_.size() << " textures" << std::endl;
+            std::cerr << "WARNING: Mesh has no textures" << std::endl;
         }
     }
 

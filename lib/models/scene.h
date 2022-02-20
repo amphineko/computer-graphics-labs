@@ -36,6 +36,8 @@ public:
 
     void Draw(ShaderProgram *shader_program) { root_node_->Draw(model_matrix_, 0, shader_program); }
 
+    glm::vec3 GetPosition() { return position_; }
+
     [[nodiscard]] float GetPitch() const { return pitch_; }
 
     [[nodiscard]] float GetYaw() const { return yaw_; }

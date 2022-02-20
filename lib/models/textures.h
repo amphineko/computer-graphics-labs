@@ -6,7 +6,6 @@
 #include <map>
 #include <string>
 
-#include <GL/glew.h>
 #include <stbi/stb_image.h>
 
 typedef unsigned int MeshTextureRole;

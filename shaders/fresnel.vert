@@ -1,4 +1,4 @@
-#version 330 core
+#version 410 core
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
@@ -49,8 +49,8 @@ void main() {
         vNormal = mat3(tangent, bitangent, normal) * vNormal;
     }
 
-    vWorldNormal = vec3(modelMatrix * vec4(normal, 0.0));
-    vWorldPosition = vec3(modelMatrix * vec4(position, 1.0));
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vWorldPosition = mat3(modelMatrix) * position;
     vWorldViewDirection = vWorldPosition.xyz - cameraPosition;
 
     vReflectDirection = reflect(vWorldViewDirection, vWorldNormal);

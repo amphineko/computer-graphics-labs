@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
 class ShaderProgram {
@@ -37,6 +37,18 @@ public:
     [[nodiscard]] bool IsReady() const { return program_ != 0; }
 
     void Use() const { glUseProgram(this->program_); }
+
+    GLint GetInt(const char *name) const {
+        GLint location = glGetUniformLocation(program_, name);
+        if (location == -1) {
+            std::cerr << "Could not find uniform " << name << std::endl;
+            return 0;
+        }
+
+        GLint result;
+        glGetUniformiv(program_, location, &result);
+        return result;
+    }
 
     void GetVec3(const char *name, glm::vec3 &value) const {
         GLint location = glGetUniformLocation(program_, name);

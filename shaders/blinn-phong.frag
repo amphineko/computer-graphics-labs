@@ -1,4 +1,4 @@
-#version 330 core
+#version 410 core
 
 out vec4 FragColor;
 
@@ -32,8 +32,13 @@ uniform sampler2D specularMap0;
 uniform sampler2D normalMap0;
 uniform sampler2D heightMap0;
 
+uniform int nLights;
+uniform vec3 lightDiffuses[16];
+
+uniform int debugNormals;
+
 void main() {
-    vec3 lightDiffuse = vec3(0.5, 0.5, 0.5);
+    vec3 lightDiffuse = lightDiffuses[0];
 
     vec3 matAmbient = vec3(0.25, 0.25, 0.25);
     vec3 matDiffuse = nDiffuseMap > 0 ? texture(diffuseMap0, vUv).xyz : meshDiffuse;
@@ -49,4 +54,8 @@ void main() {
     vec3 specular = matSpecular * lightDiffuse * specularFactor;
 
     FragColor = vec4(diffuse + specular, 1.0);
+
+    if (debugNormals > 0) {
+        FragColor = vec4(vNormal, 1.0);
+    }
 }
