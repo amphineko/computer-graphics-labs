@@ -7,11 +7,11 @@
 #include "lib/program.h"
 #include "lib/skybox.h"
 
-class TransmittanceProgram : public Program {
+class NormalMapProgram : public Program {
 public:
-    TransmittanceProgram() {
+    NormalMapProgram() {
         delete (FirstPersonCamera *)camera_;
-        camera_ = new ThirdPersonCamera(0.0f, 15.0f, 40.0f, -15.0f, 270.0f);
+        camera_ = new ThirdPersonCamera(25.0f, 25.0f, -25.0f, -15.0f, 135.0f);
         SetLightCount(1);
     }
 
@@ -19,7 +19,7 @@ public:
 
 protected:
     void Draw() override {
-        Program::DrawEnvMap(glm::vec3(0.0, 5.0, 0.0)); // TODO: use teapot position
+        Program::DrawEnvMap(glm::vec3(0.0, obj_center_height_, 0.0)); // TODO: use teapot position
 
         SetLight(0, glm::vec3(0.0f, 50.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
         SetLightCount(1);
@@ -29,7 +29,7 @@ protected:
         last_frame_time = current_time;
 
         if (!mouse_hold_) {
-            camera_->Rotate(0.0f, float(delta_time) * 0.5f);
+            fresnel_obj_->Rotate(0.0f, float(delta_time) * 0.5f, 0.0f);
         }
 
         Program::Draw();
@@ -62,6 +62,8 @@ protected:
             ImGui::SliderFloat("Bias", &fresnel_bias_, 0.0f, 1.0f);
             ImGui::SliderFloat("Power", &fresnel_power_, 0.0f, 10.0f);
             ImGui::SliderFloat("Scale", &fresnel_scale_, 0.0f, 10.0f);
+            ImGui::TreeNode("Dynamic EnvMap");
+            ImGui::SliderFloat("Center height", &obj_center_height_, 0.0f, 100.0f);
             ImGui::End();
         }
 
@@ -92,12 +94,14 @@ private:
 
     glm::vec3 light_position_ = glm::vec3(0.0f, 25.0f, 25.0f);
 
-    float fresnel_eta_r_ = 0.60f;
-    float fresnel_eta_g_ = 0.65f;
-    float fresnel_eta_b_ = 0.70f;
+    float fresnel_eta_r_ = 0.40f;
+    float fresnel_eta_g_ = 0.50f;
+    float fresnel_eta_b_ = 0.60f;
     float fresnel_bias_ = 0.10f;
     float fresnel_power_ = 5.0f;
     float fresnel_scale_ = 1.0f;
+
+    float obj_center_height_ = 10.0f;
 
     bool debug_normals_ = false;
     double last_frame_time = 0;
@@ -128,17 +132,17 @@ private:
             return false;
         }
         fresnel_obj_->Initialize();
-        fresnel_obj_->GetRootNode()->Scale(2.0f);
-        fresnel_obj_->GetRootNode()->Translate(0.0f, 0.0f, 0.0f);
-        fresnel_obj_->GetRootNode()->SetEnvMap(env_map_);
+        fresnel_obj_->Scale(2.0f);
+        fresnel_obj_->Translate(0.0f, 0.0f, 0.0f);
+        fresnel_obj_->SetEnvMap(env_map_);
 
         if (!Scene::CreateFromFile("resources/models/table/scene.gltf", table_, texture_manager_)) {
             std::cout << "FATAL: Failed to load scene" << std::endl;
             return false;
         }
         table_->Initialize();
-        table_->GetRootNode()->Scale(0.5f);
-        table_->GetRootNode()->Translate(0.0f, 0.0f, -20.0f);
+        table_->Scale(0.5f);
+        table_->Translate(0.0f, -5.0f, 0.0f);
 
         // background
 
@@ -162,7 +166,7 @@ private:
 
 int main() {
     auto window_title = std::string("CS7GV3: Transmittance");
-    TransmittanceProgram program;
+    NormalMapProgram program;
     if (program.Initialize(window_title)) {
         program.Run();
         return 0;

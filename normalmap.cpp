@@ -6,11 +6,11 @@
 #include "lib/cameras/camera_tp.h"
 #include "lib/program.h"
 
-class TransmittanceProgram : public Program {
+class NormalMapProgram : public Program {
 public:
-    TransmittanceProgram() {
+    NormalMapProgram() {
         delete (FirstPersonCamera *)camera_;
-        camera_ = new ThirdPersonCamera(0.0f, 0.0f, 7.5f, 0.0f, 270.0f);
+        camera_ = new ThirdPersonCamera(0.0f, 0.0f, 5.0f, 0.0f, 270.0f);
         SetLightCount(1);
     }
 
@@ -81,7 +81,7 @@ private:
         }
         fresnel_obj_->Initialize();
         fresnel_obj_->GetRootNode()->Scale(1.0f);
-        fresnel_obj_->GetRootNode()->Translate(0.0f, 0.0f, -5.0f);
+        fresnel_obj_->GetRootNode()->Translate(0.0f, -5.0f, 0.0f);
 
         last_frame_time = glfwGetTime();
 
@@ -91,7 +91,7 @@ private:
 
 int main() {
     auto window_title = std::string("CS7GV3: Normal Map");
-    TransmittanceProgram program;
+    NormalMapProgram program;
     if (program.Initialize(window_title)) {
         program.Run();
         return 0;
