@@ -24,7 +24,7 @@ public:
         : origin_(origin), length_(length), rotation_limit_x_(rotation_limit_x), rotation_limit_y_(rotation_limit_y),
           rotation_limit_z_(rotation_limit_z), rotation_speed_(rotation_speed), node_(node) {}
 
-    glm::vec3 Actuate(glm::vec3 delta) {
+    void Actuate(glm::vec3 delta) {
         delta.x = glm::clamp(delta.x, -rotation_speed_, rotation_speed_);
         delta.y = glm::clamp(delta.y, -rotation_speed_, rotation_speed_);
         delta.z = glm::clamp(delta.z, -rotation_speed_, rotation_speed_);
@@ -40,6 +40,8 @@ public:
     [[nodiscard]] glm::vec3 GetEndPosition() const {
         return node_->GetWorldTransform() * glm::vec4(origin_ + length_, 1.0f);
     }
+
+    [[nodiscard]] glm::mat4 GetWorldTransform() const { return node_->GetWorldTransform(); }
 
     glm::vec3 Jacobian(glm::vec3 end_position, glm::vec3 axis) {
         axis = glm::mat3(node_->GetWorldTransform()) * axis;

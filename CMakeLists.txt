@@ -12,6 +12,7 @@ include_directories(${ASSIMP_INCLUDE_DIRS} ${GLEW_INCLUDE_DIRS} ${GLFW_INCLUDE_D
 include_directories(vendors)
 include_directories(vendors/glad/include)
 include_directories(vendors/imgui)
+include_directories(vendors/ozz-animation/include)
 
 add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 
@@ -34,7 +35,10 @@ set(project_shared_files
         vendors/imgui/imgui_widgets.cpp
         vendors/imgui/backends/imgui_impl_glfw.cpp
         vendors/imgui/backends/imgui_impl_opengl3.cpp
+        vendors/ozz-animation/src_fused/ozz_animation.cc
+        vendors/ozz-animation/src_fused/ozz_base.cc
         ${project_shared_sources})
+
 
 set(project_shared_libraries
         ${ASSIMP_LIBRARIES}

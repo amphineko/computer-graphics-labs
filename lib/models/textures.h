@@ -102,7 +102,7 @@ private:
         int width, height, n_channels;
         stbi_uc *data = stbi_load(path.c_str(), &width, &height, &n_channels, 0);
         if (data) {
-            GLenum format = 0;
+            GLenum format;
             switch (n_channels) {
             case STBI_grey:
                 format = GL_RED;
