@@ -1,7 +1,4 @@
-#include "glm/gtx/rotate_vector.hpp"
 #include "imgui.h"
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
 
 #include "lib/cameras/camera_tp.h"
 #include "lib/program.h"
@@ -49,27 +46,6 @@ protected:
         fresnel_shader_->SetFloat("fresnelScale", fresnel_scale_);
         fresnel_obj_->Draw(fresnel_shader_);
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        {
-            ImGui::Begin("Transmittance: Settings");
-            ImGui::TreeNode("Fresnel effects");
-            ImGui::SliderFloat("eta-red", &fresnel_eta_r_, 0.0f, 1.0f);
-            ImGui::SliderFloat("eta-green", &fresnel_eta_g_, 0.0f, 1.0f);
-            ImGui::SliderFloat("eta-blue", &fresnel_eta_b_, 0.0f, 1.0f);
-            ImGui::SliderFloat("Bias", &fresnel_bias_, 0.0f, 1.0f);
-            ImGui::SliderFloat("Power", &fresnel_power_, 0.0f, 10.0f);
-            ImGui::SliderFloat("Scale", &fresnel_scale_, 0.0f, 10.0f);
-            ImGui::TreeNode("Dynamic EnvMap");
-            ImGui::SliderFloat("Center height", &obj_center_height_, 0.0f, 100.0f);
-            ImGui::End();
-        }
-
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
         glCheckError();
     }
 
@@ -81,6 +57,24 @@ protected:
 
         phong_shader_->Use();
         table_->Draw(phong_shader_);
+
+        glCheckError();
+    }
+
+    void DrawImGui() override {
+        Program::DrawImGui();
+
+        ImGui::Begin("Transmittance: Settings");
+        ImGui::TreeNode("Fresnel effects");
+        ImGui::SliderFloat("eta-red", &fresnel_eta_r_, 0.0f, 1.0f);
+        ImGui::SliderFloat("eta-green", &fresnel_eta_g_, 0.0f, 1.0f);
+        ImGui::SliderFloat("eta-blue", &fresnel_eta_b_, 0.0f, 1.0f);
+        ImGui::SliderFloat("Bias", &fresnel_bias_, 0.0f, 1.0f);
+        ImGui::SliderFloat("Power", &fresnel_power_, 0.0f, 10.0f);
+        ImGui::SliderFloat("Scale", &fresnel_scale_, 0.0f, 10.0f);
+        ImGui::TreeNode("Dynamic EnvMap");
+        ImGui::SliderFloat("Center height", &obj_center_height_, 0.0f, 100.0f);
+        ImGui::End();
     }
 
 private:

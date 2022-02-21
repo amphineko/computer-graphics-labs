@@ -3,6 +3,7 @@
 
 #include "glm/gtx/euler_angles.hpp"
 #include "glm/gtx/matrix_decompose.hpp"
+#include "glm/gtx/transform.hpp"
 
 #include "../shaders/shader.h"
 #include "mesh.h"
@@ -46,6 +47,8 @@ public:
             parent_ = parent;
             world_transform_ = parent->GetWorldTransform() * local_transform_;
         }
+
+        name_ = std::string(node->mName.C_Str());
 
         glm::quat rotation;
         glm::vec3 skew;
@@ -95,6 +98,21 @@ public:
         }
     }
 
+    bool FindByName(const std::string &name, Node *&node) {
+        if (name == name_) {
+            node = this;
+            return true;
+        }
+
+        for (auto &child : children_) {
+            if (child->FindByName(name, node)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void GetNodeSummary(unsigned int &mesh_count, unsigned &node_count) {
         mesh_count += meshes_.size();
         node_count += 1;
@@ -103,6 +121,10 @@ public:
             child->GetNodeSummary(mesh_count, node_count);
         }
     }
+
+    glm::vec3 GetRotation() { return rotation_; }
+
+    [[nodiscard]] glm::vec3 GetWorldPosition() const { return world_transform_[3]; }
 
     [[nodiscard]] glm::mat4 GetWorldTransform() const { return world_transform_; }
 
@@ -116,10 +138,13 @@ public:
         }
     }
 
-    void LoadEnvMap(const std::string &name,
-                    const std::map<GLenum, std::string> &paths,
-                    const std::filesystem::path &base_path,
-                    TextureManager &manager) {
+    /**
+     * @deprecated Environment map is now rendered in real-time
+     */
+    [[maybe_unused]] void LoadEnvMap(const std::string &name,
+                                     const std::map<GLenum, std::string> &paths,
+                                     const std::filesystem::path &base_path,
+                                     TextureManager &manager) {
         env_map_ = manager.LoadCubeMap(NODE_TEXTURE_ROLE_ENV_MAP, name, paths, base_path);
     }
 
@@ -134,6 +159,16 @@ public:
     }
 
     void SetEnvMap(NodeTexture env_map) { env_map_ = env_map; }
+
+    void SetPosition(float x, float y, float z) {
+        translation_ = glm::vec3(x, y, z);
+        UpdateTransformMatrix();
+    }
+
+    void SetRotation(const glm::vec3 &value) {
+        rotation_ = value;
+        UpdateTransformMatrix();
+    }
 
     void Translate(float delta_x, float delta_y, float delta_z) {
         translation_ += glm::vec3(delta_x, delta_y, delta_z);
@@ -164,6 +199,7 @@ private:
     std::vector<Mesh *> meshes_;
 
     const Node *parent_ = nullptr;
+    std::string name_;
 
     NodeTexture env_map_{.role = 0};
 

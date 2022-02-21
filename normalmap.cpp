@@ -1,7 +1,5 @@
 #include "glm/gtx/rotate_vector.hpp"
 #include "imgui.h"
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
 
 #include "lib/cameras/camera_tp.h"
 #include "lib/program.h"
@@ -20,40 +18,11 @@ protected:
     void Draw() override {
         Program::Draw();
 
-        {
-            auto current_time = glfwGetTime();
-            auto delta_time = current_time - last_frame_time;
-            last_frame_time = current_time;
+        light_position_ = glm::rotateZ(light_position_, float(last_frame_time_ * 1.0f));
+        SetLight(light_position_, glm::vec3(0, 0, 0));
 
-            light_position_ = glm::rotateZ(light_position_, float(delta_time * 1.0f));
-            SetLight(light_position_, glm::vec3(0, 0, 0));
-
-            current_shader->Use();
-            fresnel_obj_->Draw(current_shader);
-        }
-
-        {
-            ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplGlfw_NewFrame();
-            ImGui::NewFrame();
-
-            {
-                ImGui::Begin("Normal Map: Settings");
-                if (ImGui::Button("Shader: Cook-Torrance")) {
-                    current_shader = shaders_[0];
-                }
-                if (ImGui::Button("Shader: Blinn-Phong")) {
-                    current_shader = shaders_[1];
-                }
-                if (ImGui::Checkbox("Debug: Normals", &debug_normals_)) {
-                    current_shader->SetInt("debugNormals", debug_normals_);
-                }
-                ImGui::End();
-            }
-
-            ImGui::Render();
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        }
+        current_shader->Use();
+        fresnel_obj_->Draw(current_shader);
     }
 
 private:
@@ -64,7 +33,6 @@ private:
     glm::vec3 light_position_ = glm::vec3(2.0f);
 
     bool debug_normals_ = false;
-    double last_frame_time = 0;
 
     bool Initialize(const std::string &window_title, bool env_map) override {
         if (!Program::Initialize(window_title, true)) {
@@ -83,9 +51,21 @@ private:
         fresnel_obj_->GetRootNode()->Scale(1.0f);
         fresnel_obj_->GetRootNode()->Translate(0.0f, -5.0f, 0.0f);
 
-        last_frame_time = glfwGetTime();
-
         return true;
+    }
+
+    void DrawImGui() override {
+        ImGui::Begin("Normal Map: Settings");
+        if (ImGui::Button("Shader: Cook-Torrance")) {
+            current_shader = shaders_[0];
+        }
+        if (ImGui::Button("Shader: Blinn-Phong")) {
+            current_shader = shaders_[1];
+        }
+        if (ImGui::Checkbox("Debug: Normals", &debug_normals_)) {
+            current_shader->SetInt("debugNormals", debug_normals_);
+        }
+        ImGui::End();
     }
 };
 

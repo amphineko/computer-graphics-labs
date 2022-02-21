@@ -12,6 +12,7 @@
 
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
+#include <numeric>
 
 #define ENV_MAP_SIZE 1024
 #define FOV 60.0f
@@ -50,29 +51,52 @@ public:
     }
 
     void Run() {
-        auto last_frame_time = glfwGetTime(), last_fps_time = last_frame_time;
-        auto fps = 0;
-
+        last_frame_clock_ = glfwGetTime();
         while (!glfwWindowShouldClose(window_)) {
             glfwPollEvents();
 
-            auto current_time = glfwGetTime();
-            auto frame_time = current_time - last_frame_time;
-            last_frame_time = current_time;
-
-            ++fps;
-            if (current_time - last_fps_time >= 1.0) {
-                glfwSetWindowTitle(window_, (window_title_ + " [FPS: " + std::to_string(fps) + "]").c_str());
-                fps = 0;
-                last_fps_time = current_time;
-            }
-
             if (!io_->WantCaptureMouse) {
-                HandleKeyboardInput(frame_time);
+                HandleKeyboardInput(last_frame_time_);
                 HandleMouseInput();
             }
 
+            // statistics
+
+            current_frame_clock_ = glfwGetTime();
+            last_frame_time_ = current_frame_clock_ - last_frame_clock_;
+            last_frame_clock_ = current_frame_clock_;
+
+            frame_times.push_back(last_frame_time_);
+            total_frame_time += last_frame_time_;
+
+            if (total_frame_time > 1.0) {
+                auto frame_count = double(frame_times.size());
+                frame_per_sec = frame_count / total_frame_time;
+                frame_time_avg = total_frame_time / frame_count;
+                frame_time_var = std::accumulate(frame_times.begin(),
+                                                 frame_times.end(),
+                                                 0.0,
+                                                 [&](double sum, double x) {
+                                                     return sum + (x - frame_time_avg) * (x - frame_time_avg);
+                                                 }) /
+                                 frame_count;
+
+                frame_times.clear();
+                total_frame_time = 0;
+            }
+
             Draw();
+
+            {
+                ImGui_ImplOpenGL3_NewFrame();
+                ImGui_ImplGlfw_NewFrame();
+                ImGui::NewFrame();
+
+                DrawImGui();
+
+                ImGui::Render();
+                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            }
 
             glfwSwapBuffers(window_);
         }
@@ -90,6 +114,8 @@ protected:
     GLFWwindow *window_ = nullptr;
     ImGuiIO *io_ = nullptr;
 
+    double last_frame_time_ = 0, current_frame_clock_ = 0;
+
     virtual void Draw() {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, display_width_, display_height_);
@@ -99,6 +125,15 @@ protected:
 
         auto viewMatrix = camera_->GetViewMatrix();
         ConfigureShaders(camera_->GetPosition(), display_width_, display_height_, FOV, viewMatrix);
+    }
+
+    virtual void DrawImGui() {
+        ImGui::Begin("Stats");
+        ImGui::Text("FPS: %.2f", frame_per_sec);
+        ImGui::Text("Frame time: %.2f ms", last_frame_time_ * 1000);
+        ImGui::Text("Frame time avg: %.2f ms", frame_time_avg * 1000);
+        ImGui::Text("Frame time var: %.2f ms", frame_time_var * 1000);
+        ImGui::End();
     }
 
     virtual void DrawEnvMap(glm::vec3 position) {
@@ -158,6 +193,12 @@ private:
     glm::vec3 light_diffuses_[MAX_N_LIGHTS] = {glm::vec3(1.0f, 1.0f, 1.0f)};
     glm::vec3 light_directions_[MAX_N_LIGHTS] = {glm::vec3(0, 0, 0)};
     glm::vec3 light_positions_[MAX_N_LIGHTS] = {glm::vec3(0, 0, 0)};
+
+    double last_frame_clock_;
+
+    std::vector<double> frame_times;
+    double total_frame_time = 0;
+    double frame_per_sec = 0, frame_time_avg = 0, frame_time_var = 0;
 
     /**
      * @param width viewport width

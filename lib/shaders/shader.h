@@ -78,8 +78,6 @@ public:
 private:
     GLuint program_ = 0;
 
-    GLuint current_texture_ = GL_TEXTURE0;
-
     static bool EnsureProgramLinked(GLuint program) {
         GLint success;
         glGetProgramiv(program, GL_LINK_STATUS, &success);

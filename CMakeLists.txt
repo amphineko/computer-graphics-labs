@@ -46,6 +46,9 @@ if (APPLE)
     set(shared_libraries ${shared_libraries} "-framework OpenGL")
 endif ()
 
+add_executable(inverse_kinematics inverse_kinematics.cpp ${project_shared_files})
+target_link_libraries(inverse_kinematics ${project_shared_libraries})
+
 add_executable(transmittance transmittance.cpp ${project_shared_files})
 target_link_libraries(transmittance ${project_shared_libraries})
 
