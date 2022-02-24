@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 
+#include "../utils.h"
 #include <stbi/stb_image.h>
 
 typedef unsigned int MeshTextureRole;
@@ -31,6 +32,14 @@ struct NodeTexture {
 
 class TextureManager {
 public:
+    TextureManager() : TextureManager(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, true) {}
+
+    TextureManager(GLint min_filter, GLint mag_filter, bool mipmap) {
+        min_filter_ = min_filter;
+        mag_filter_ = mag_filter;
+        mipmap_ = mipmap;
+    }
+
     ~TextureManager() {
         for (const auto &texture : mesh_textures_) {
             glDeleteTextures(1, &texture.second.name);
@@ -58,10 +67,16 @@ public:
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if (min_filter_ != 0) {
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, min_filter_);
+        }
+        if (mag_filter_ != 0) {
+            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, mag_filter_);
+        }
 
-        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        if (mipmap_) {
+            glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+        }
 
         NodeTexture texture{.name = texture_id, .role = type};
         node_textures_[map_name] = texture;
@@ -83,13 +98,21 @@ public:
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if (min_filter_ != 0) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter_);
+        }
+        if (mag_filter_ != 0) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter_);
+        }
 
-        glGenerateMipmap(GL_TEXTURE_2D);
+        if (mipmap_) {
+            glGenerateMipmap(GL_TEXTURE_2D);
+        }
 
         MeshTexture texture{.name = texture_id, .role = role};
         mesh_textures_[filename] = texture;
+
+        glCheckError();
 
         return texture;
     }
@@ -97,6 +120,9 @@ public:
 private:
     std::map<std::string, NodeTexture> node_textures_;
     std::map<std::string, MeshTexture> mesh_textures_;
+
+    GLint min_filter_ = 0, mag_filter_ = 0;
+    bool mipmap_ = false;
 
     static void LoadTextureImageFromFile(GLenum texture_target, const std::filesystem::path &path) {
         int width, height, n_channels;

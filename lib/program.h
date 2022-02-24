@@ -51,6 +51,8 @@ public:
     }
 
     void Run() {
+        glfwSetWindowSize(window_, display_width_, display_height_);
+
         last_frame_clock_ = glfwGetTime();
         while (!glfwWindowShouldClose(window_)) {
             glfwPollEvents();
@@ -247,13 +249,6 @@ private:
         }
     }
 
-    static void EnableFeatures() {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-
-        glEnable(GL_MULTISAMPLE);
-    }
-
     static void HandleFramebufferSizeChange(GLFWwindow *window, int width, int height) {
         auto that = (Program *)glfwGetWindowUserPointer(window);
         std::cout << "INFO: Resized window to " << width << "x" << height << std::endl;
@@ -386,7 +381,7 @@ private:
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-        glfwWindowHint(GLFW_SAMPLES, 4);
+        glfwWindowHint(GLFW_SAMPLES, 16);
 
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
@@ -427,7 +422,10 @@ private:
 
         // enable additional features
 
-        EnableFeatures();
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+
+        glEnable(GL_MULTISAMPLE);
 
         return glCheckError() == GL_NO_ERROR;
     }

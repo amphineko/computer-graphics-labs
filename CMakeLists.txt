@@ -53,11 +53,14 @@ endif ()
 add_executable(inverse_kinematics inverse_kinematics.cpp ${project_shared_files})
 target_link_libraries(inverse_kinematics ${project_shared_libraries})
 
-add_executable(transmittance transmittance.cpp ${project_shared_files})
-target_link_libraries(transmittance ${project_shared_libraries})
+add_executable(mipmap mipmap.cpp ${project_shared_files})
+target_link_libraries(mipmap ${project_shared_libraries})
 
 add_executable(normalmap normalmap.cpp ${project_shared_files})
 target_link_libraries(normalmap ${project_shared_libraries})
+
+add_executable(transmittance transmittance.cpp ${project_shared_files})
+target_link_libraries(transmittance ${project_shared_libraries})
 
 include(CMakePrintHelpers)
 cmake_print_variables(ASSIMP_INCLUDE_DIRS)
