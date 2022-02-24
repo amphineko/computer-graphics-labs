@@ -86,6 +86,10 @@ private:
     BoneChain *chain_;
     std::vector<Bone *> joints_;
 
+    BoneChain *chain_locked_;
+    std::vector<Bone *> joints_locked_;
+    bool two_bones_ = false;
+
     ozz::animation::Animation animation_;
     ozz::animation::Skeleton skeleton_;
 
@@ -106,6 +110,10 @@ private:
 
     bool track_crate_ = false;
     bool track_sine_ = false;
+
+    bool draw_end_position_ = true;
+    bool draw_model_ = true;
+    bool draw_target_ = true;
 
     ShaderProgram *shader_;
 
@@ -149,23 +157,37 @@ private:
 
         shader_->Use();
 
-        arm_->Draw(shader_);
+        if (draw_model_) {
+            arm_->Draw(shader_);
+        }
+
         crate_->Draw(shader_);
         table_->Draw(shader_);
 
-        for (auto &joint : joints_) {
-            auto end = joint->GetEndPosition();
-            axis_->SetPosition(end.x, end.y, end.z);
+        if (draw_end_position_) {
+            for (auto &joint : joints_) {
+                auto end = joint->GetEndPosition();
+                axis_->SetPosition(end.x, end.y, end.z);
 
-            float x, y, z;
-            glm::extractEulerAngleXYZ(joint->GetWorldTransform(), x, y, z);
-            axis_->SetRotation(glm::vec3(x, y, z));
+                float x, y, z;
+                glm::extractEulerAngleXYZ(joint->GetWorldTransform(), x, y, z);
+                axis_->SetRotation(glm::vec3(x, y, z));
 
+                axis_->Draw(shader_);
+            }
+        }
+
+        if (draw_target_) {
+            axis_->SetPosition(target_x, target_y, target_z);
             axis_->Draw(shader_);
         }
 
         if (enable_solver_) {
-            chain_->Solve(glm::vec3(target_x, target_y, target_z), float(last_frame_time_) * velocity_);
+            if (two_bones_) {
+                chain_locked_->Solve(glm::vec3(target_x, target_y, target_z), float(last_frame_time_) * velocity_);
+            } else {
+                chain_->Solve(glm::vec3(target_x, target_y, target_z), float(last_frame_time_) * velocity_);
+            }
         }
 
         glCheckError();
@@ -178,6 +200,7 @@ private:
         ImGui::TreeNode("Solver");
         ImGui::SliderFloat("Velocity", &velocity_, 0.005f, 0.01f);
         ImGui::Checkbox("Enable Solver", &enable_solver_);
+        ImGui::Checkbox("Simple 2-bone only", &two_bones_);
         ImGui::Checkbox("Track Crate", &track_crate_);
         ImGui::Checkbox("Track Sine Function", &track_sine_);
 
@@ -189,6 +212,11 @@ private:
         ImGui::TreeNode("Animation");
         ImGui::Checkbox("Enable Animation", &enable_animation_);
         ImGui::SliderFloat("Animation Speed", &animation_speed_, 1.0f, 10.0f);
+
+        ImGui::TreeNode("Rendering");
+        ImGui::Checkbox("Draw End Position", &draw_end_position_);
+        ImGui::Checkbox("Draw Model", &draw_model_);
+        ImGui::Checkbox("Draw Target", &draw_target_);
 
         ImGui::End();
     }
@@ -224,13 +252,12 @@ private:
         auto disabled = glm::vec2(0.0f, 0.0f);
         auto speed = glm::radians(0.5f);
 
-        auto base = new Bone(glm::vec3(0.0f, 0.0f, 0.0f),
-                             glm::vec3(0.0f, 0.0f, 5.0f),
-                             disabled,
-                             disabled,
-                             glm::vec2(-114514.0f, 114514.0f),
-                             speed,
-                             base_node_);
+        auto base_origin = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto base_length = glm::vec3(0.0f, 0.0f, 5.0f);
+        auto base_rot_z = glm::vec2(-114514.0f, 114514.0f);
+        auto base = new Bone(base_origin, base_length, disabled, disabled, base_rot_z, speed, base_node_);
+        auto base_locked = new Bone(base_origin, base_length, disabled, disabled, disabled, speed, base_node_);
+
         auto upper = new Bone(glm::vec3(0.0f, 0.0f, 0.0f),
                               glm::vec3(0.0f, 0.0f, 48.5f),
                               disabled,
@@ -238,35 +265,47 @@ private:
                               disabled,
                               speed,
                               upper_arm_);
-        auto fore = new Bone(glm::vec3(0.0f, 0.0f, 0.0f),
-                             glm::vec3(40.0f, 0.0f, 8.0f),
+
+        auto fore_origin = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto fore_length = glm::vec3(40.0f, 0.0f, 8.0f);
+        auto fore = new Bone(fore_origin,
+                             fore_length,
                              disabled,
                              glm::vec2(glm::radians(-180.0f), glm::radians(0.0f)),
                              disabled,
                              speed,
                              fore_arm_);
-        auto hand = new Bone(glm::vec3(0.0f, 0.0f, 0.0f),
-                             glm::vec3(12.5f, 0.0f, 0.0f),
-                             glm::vec2(-114514.0f, 114514.0f),
-                             disabled,
-                             disabled,
-                             speed,
-                             hand_);
-        auto finger = new Bone(glm::vec3(0.0f, -3.5f, 0.0f),
-                               glm::vec3(0.0f, 0.0f, -20.0f),
+
+        auto hand_origin = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto hand_length = glm::vec3(12.5f, 0.0f, 0.0f);
+        auto hand_rot_x = glm::vec2(-114514.0f, 114514.0f);
+        auto hand = new Bone(hand_origin, hand_length, hand_rot_x, disabled, disabled, speed, hand_);
+        auto hand_locked = new Bone(hand_origin, hand_length, disabled, disabled, disabled, speed, hand_);
+
+        auto finger_origin = glm::vec3(0.0f, -3.5f, 0.0f);
+        auto finger_length = glm::vec3(0.0f, 0.0f, -20.0f);
+        auto finger = new Bone(finger_origin,
+                               finger_length,
                                disabled,
                                glm::vec2(glm::radians(-180.0f), glm::radians(0.0f)),
                                disabled,
                                speed,
                                finger_);
+        auto finger_locked = new Bone(finger_origin, finger_length, disabled, disabled, disabled, speed, finger_);
 
         joints_.push_back(base);
         joints_.push_back(upper);
         joints_.push_back(fore);
         joints_.push_back(hand);
         joints_.push_back(finger);
-
         chain_ = new BoneChain(joints_);
+
+        joints_locked_.push_back(base_locked);
+        joints_locked_.push_back(upper);
+        joints_locked_.push_back(fore);
+        joints_locked_.push_back(hand_locked);
+        joints_locked_.push_back(finger_locked);
+        chain_locked_ = new BoneChain(joints_locked_);
     }
 
     template <typename T> static bool LoadOzzArchive(const std::string &path, T &output) {

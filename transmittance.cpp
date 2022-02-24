@@ -4,9 +4,9 @@
 #include "lib/program.h"
 #include "lib/skybox.h"
 
-class NormalMapProgram : public Program {
+class TransmittanceProgram : public Program {
 public:
-    NormalMapProgram() {
+    TransmittanceProgram() {
         delete (FirstPersonCamera *)camera_;
         camera_ = new ThirdPersonCamera(25.0f, 25.0f, -25.0f, -15.0f, 135.0f);
         SetLightCount(1);
@@ -160,7 +160,7 @@ private:
 
 int main() {
     auto window_title = std::string("CS7GV3: Transmittance");
-    NormalMapProgram program;
+    TransmittanceProgram program;
     if (program.Initialize(window_title)) {
         program.Run();
         return 0;
