@@ -31,7 +31,8 @@ GLenum CheckOpenGLError(const char *file, int line) {
             error = "INVALID_FRAMEBUFFER_OPERATION";
             break;
         }
-        std::cout << file << ":" << line << ": " << error << std::endl;
+        std::cerr << file << ":" << line << ": " << error << std::endl;
+        std::cerr.flush();
     }
     return errorCode;
 }

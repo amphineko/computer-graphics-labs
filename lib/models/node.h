@@ -93,6 +93,8 @@ public:
             mesh->Draw(texture_unit, shader);
         }
 
+        glCheckError();
+
         for (auto &child : children_) {
             child->Draw(texture_unit, shader);
         }
