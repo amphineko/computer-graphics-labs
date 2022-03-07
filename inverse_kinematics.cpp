@@ -20,9 +20,6 @@ public:
     }
 
     bool Initialize(const std::string &window_title) {
-        display_width_ = 1920;
-        display_height_ = 1080;
-
         if (!Program::Initialize(window_title, false)) {
             return false;
         }
