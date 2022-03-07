@@ -65,6 +65,15 @@ protected:
         Program::DrawImGui();
 
         ImGui::Begin("Transmittance: Settings");
+
+        ImGui::TreeNode("Object");
+        if (ImGui::RadioButton("Crate", fresnel_obj_ == crate_)) {
+            fresnel_obj_ = crate_;
+        }
+        if (ImGui::RadioButton("Teapot", fresnel_obj_ == teapot_)) {
+            fresnel_obj_ = teapot_;
+        }
+
         ImGui::TreeNode("Fresnel effects");
         ImGui::SliderFloat("eta-red", &fresnel_eta_r_, 0.0f, 1.0f);
         ImGui::SliderFloat("eta-green", &fresnel_eta_g_, 0.0f, 1.0f);
@@ -72,21 +81,24 @@ protected:
         ImGui::SliderFloat("Bias", &fresnel_bias_, 0.0f, 1.0f);
         ImGui::SliderFloat("Power", &fresnel_power_, 0.0f, 10.0f);
         ImGui::SliderFloat("Scale", &fresnel_scale_, 0.0f, 10.0f);
-        ImGui::TreeNode("Dynamic EnvMap");
-        ImGui::SliderFloat("Center height", &obj_center_height_, 0.0f, 100.0f);
+
+        ImGui::TreeNode("Environment Map");
+        ImGui::SliderFloat("Height Delta", &obj_center_height_, 0.0f, 100.0f);
+
         ImGui::End();
     }
 
 private:
     Scene *fresnel_obj_ = nullptr;
+    Scene *crate_ = nullptr;
+    Scene *teapot_ = nullptr;
+
     Scene *table_ = nullptr;
     Skybox *skybox_ = nullptr;
 
     ShaderProgram *fresnel_shader_ = nullptr;
     ShaderProgram *phong_shader_ = nullptr;
     ShaderProgram *skybox_shader_ = nullptr;
-
-    glm::vec3 light_position_ = glm::vec3(0.0f, 25.0f, 25.0f);
 
     float fresnel_eta_r_ = 0.40f;
     float fresnel_eta_g_ = 0.50f;
@@ -97,7 +109,6 @@ private:
 
     float obj_center_height_ = 10.0f;
 
-    bool debug_normals_ = false;
     double last_frame_time = 0;
 
     bool Initialize(const std::string &window_title, bool env_map) override {
@@ -121,14 +132,25 @@ private:
 
         // object
 
-        if (!Scene::CreateFromFile("resources/models/teapot/scene.gltf", fresnel_obj_, texture_manager_)) {
+        if (!Scene::CreateFromFile("resources/models/crate/scene.gltf", crate_, texture_manager_)) {
             std::cout << "FATAL: Failed to load scene" << std::endl;
             return false;
         }
-        fresnel_obj_->Initialize();
-        fresnel_obj_->Scale(2.0f);
-        fresnel_obj_->Translate(0.0f, 0.0f, 0.0f);
-        fresnel_obj_->SetEnvMap(env_map_);
+        crate_->Initialize();
+        crate_->Scale(10.0f);
+        crate_->Translate(0.0f, 0.0f, 0.0f);
+        crate_->SetEnvMap(env_map_);
+
+        if (!Scene::CreateFromFile("resources/models/teapot/scene.gltf", teapot_, texture_manager_)) {
+            std::cout << "FATAL: Failed to load scene" << std::endl;
+            return false;
+        }
+        teapot_->Initialize();
+        teapot_->Scale(2.0f);
+        teapot_->Translate(0.0f, 0.0f, 0.0f);
+        teapot_->SetEnvMap(env_map_);
+
+        fresnel_obj_ = teapot_;
 
         if (!Scene::CreateFromFile("resources/models/table/scene.gltf", table_, texture_manager_)) {
             std::cout << "FATAL: Failed to load scene" << std::endl;
