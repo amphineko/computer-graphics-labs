@@ -8,7 +8,7 @@ class MipMapProgram : public Program {
 public:
     MipMapProgram() {
         delete (FirstPersonCamera *)camera_;
-        camera_ = new ThirdPersonCamera(0.0f, 0.0f, 2.0f, 0.0f, 270.0f);
+        camera_ = new ThirdPersonCamera(0.0f, 0.1f, 5.0f, 0.0f, 270.0f);
         SetLightCount(1);
     }
 
@@ -18,7 +18,11 @@ protected:
     void Draw() override {
         Program::Draw();
 
-        SetLight(light_position_, glm::vec3(0, 0, 0));
+        if (!mouse_hold_) {
+            for (auto checkerboard : checkerboards_) {
+                checkerboard->Rotate(0.0f, last_frame_time_ * 0.05f, 0.0f);
+            }
+        }
 
         current_shader->Use();
         current_obj_->Draw(current_shader);
@@ -30,8 +34,6 @@ private:
 
     ShaderProgram *current_shader = nullptr;
     Scene *current_obj_ = nullptr;
-
-    glm::vec3 light_position_ = glm::vec3(2.0f);
 
     TextureManager linear_mipmap_textures_ = TextureManager(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR, true);
     TextureManager nearest_mipmap_textures_ = TextureManager(GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST, true);
@@ -71,15 +73,17 @@ private:
         for (auto checkerboard : checkerboards_) {
             checkerboard->SetPosition(0.0f, -5.0f, 0.0f);
         }
-        InitializeObject("resources/models/brickwall/scene.gltf", walls_, texture_managers);
+        InitializeObject("resources/models/brick_wall/scene.gltf", walls_, texture_managers);
 
-        current_obj_ = walls_[0];
+        current_obj_ = checkerboards_[2];
         current_shader = shaders_[0];
 
         return true;
     }
 
     void DrawImGui() override {
+        Program::DrawImGui();
+
         ImGui::Begin("Mipmap: Settings");
 
         ImGui::TreeNode("Rendering");
@@ -123,7 +127,7 @@ private:
 };
 
 int main() {
-    auto window_title = std::string("CS7GV3: Normal Map");
+    auto window_title = std::string("CS7GV3: Mipmaps");
     MipMapProgram program;
     if (program.Initialize(window_title)) {
         program.Run();

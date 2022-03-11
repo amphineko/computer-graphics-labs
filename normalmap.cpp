@@ -43,7 +43,7 @@ private:
         shaders_.push_back(new ShaderProgram("shaders/phong.vert", "shaders/blinn-phong.frag"));
         current_shader = shaders_[0];
 
-        if (!Scene::CreateFromFile("resources/models/brickwall/scene.gltf", fresnel_obj_, texture_manager_)) {
+        if (!Scene::CreateFromFile("resources/models/brick_wall/scene.gltf", fresnel_obj_, texture_manager_)) {
             std::cout << "FATAL: Failed to load scene" << std::endl;
             return false;
         }
@@ -55,6 +55,8 @@ private:
     }
 
     void DrawImGui() override {
+        Program::DrawImGui();
+
         ImGui::Begin("Normal Map: Settings");
         if (ImGui::Button("Shader: Cook-Torrance")) {
             current_shader = shaders_[0];
@@ -62,7 +64,7 @@ private:
         if (ImGui::Button("Shader: Blinn-Phong")) {
             current_shader = shaders_[1];
         }
-        if (ImGui::Checkbox("Debug: Normals", &debug_normals_)) {
+        if (ImGui::Checkbox("Debug: World Normal", &debug_normals_)) {
             current_shader->SetInt("debugNormals", debug_normals_);
         }
         ImGui::End();
