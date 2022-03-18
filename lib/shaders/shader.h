@@ -8,6 +8,8 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "../utils.h"
+
 class ShaderProgram {
 public:
     ShaderProgram(const char *vertexShaderPath, const char *fragmentShaderPath) {
@@ -32,6 +34,8 @@ public:
             glDeleteProgram(program_);
             program_ = 0;
         }
+
+        glCheckError();
     }
 
     [[nodiscard]] bool IsReady() const { return program_ != 0; }
@@ -67,16 +71,22 @@ public:
         glUniformMatrix4fv(glGetUniformLocation(program_, name), 1, GL_FALSE, glm::value_ptr(mat));
     }
 
+    void SetVec2(const char *name, glm::vec2 vec) const {
+        glUniform2fv(glGetUniformLocation(program_, name), 1, glm::value_ptr(vec));
+    }
+
     void SetVec3(const char *name, glm::vec3 vec) const {
-        glUniform3f(glGetUniformLocation(program_, name), vec.x, vec.y, vec.z);
+        glUniform3fv(glGetUniformLocation(program_, name), 1, glm::value_ptr(vec));
     }
 
     void SetVec3Array(const char *name, GLsizei count, const glm::vec3 *vec) const {
         glUniform3fv(glGetUniformLocation(program_, name), count, glm::value_ptr(vec[0]));
     }
 
-private:
+protected:
     GLuint program_ = 0;
+
+    ShaderProgram() {}
 
     static bool EnsureProgramLinked(GLuint program) {
         GLint success;
@@ -87,24 +97,6 @@ private:
 
             glGetProgramInfoLog(program, log_buffer_size, nullptr, log);
             std::cout << "Error: Could not link program: " << log << std::endl;
-
-            return false;
-        }
-
-        return true;
-    }
-
-    static bool EnsureShaderCompiled(GLuint shader, GLenum shaderType) {
-        glCompileShader(shader);
-
-        GLint success;
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            const GLsizei log_buffer_size = 1024;
-            GLchar log[log_buffer_size];
-
-            glGetShaderInfoLog(shader, log_buffer_size, nullptr, log);
-            std::cout << "Error: Could not compile shader type " << shaderType << ": " << log << std::endl;
 
             return false;
         }
@@ -134,6 +126,25 @@ private:
         const char *pShaderCode = shaderCode.c_str();
         glShaderSource(shader, 1, &pShaderCode, nullptr);
         return EnsureShaderCompiled(shader, shaderType);
+    }
+
+private:
+    static bool EnsureShaderCompiled(GLuint shader, GLenum shaderType) {
+        glCompileShader(shader);
+
+        GLint success;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            const GLsizei log_buffer_size = 1024;
+            GLchar log[log_buffer_size];
+
+            glGetShaderInfoLog(shader, log_buffer_size, nullptr, log);
+            std::cout << "Error: Could not compile shader type " << shaderType << ": " << log << std::endl;
+
+            return false;
+        }
+
+        return true;
     }
 };
 

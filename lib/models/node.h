@@ -150,6 +150,20 @@ public:
         env_map_ = manager.LoadCubeMap(NODE_TEXTURE_ROLE_ENV_MAP, name, paths, base_path);
     }
 
+    virtual void Pick(MeshVertexPickResult &result, ShaderProgram *shader) const {
+        shader->SetMat4("modelMatrix", world_transform_);
+
+        for (auto &mesh : meshes_) {
+            mesh->Pick(result, world_transform_);
+        }
+
+        for (auto &child : children_) {
+            child->Pick(result, shader);
+        }
+
+        glCheckError();
+    }
+
     void Rotate(float delta_pitch, float delta_yaw, float delta_roll) {
         rotation_ += glm::vec3(delta_pitch, delta_yaw, delta_roll);
         UpdateTransformMatrix();

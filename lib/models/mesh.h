@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "../shaders/shader.h"
+#include "../shaders/vertex_picker.h"
 
 #include "textures.h"
 
@@ -31,12 +32,32 @@ struct MeshVertex {
           bitangent(kDefaultMeshBitangent) {}
 };
 
+class Mesh;
+
+struct MeshVertexPickResult {
+    float distance;
+    const MeshVertex *vertex;
+
+    glm::vec3 display_position;
+    glm::vec3 world_position;
+
+    bool operator<(const MeshVertexPickResult &other) const { return distance < other.distance; }
+};
+
+struct MeshVertexPickResultComparator {
+    bool operator()(const MeshVertexPickResult &lhs, const MeshVertexPickResult &rhs) const {
+        return lhs.distance < rhs.distance;
+    }
+};
+
 class Mesh {
 public:
     Mesh(const aiMesh *mesh, const aiScene *scene, const std::string &base_path, TextureManager &manager) {
         LoadVertices(mesh);
         LoadMaterials(mesh, scene, base_path, manager);
     }
+
+    ~Mesh() { delete[] tf_out_; }
 
     void Draw(GLuint texture_unit, ShaderProgram *shader) const {
         shader->SetVec3("meshAmbient", ambient_);
@@ -119,6 +140,83 @@ public:
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
         glBufferData(
             GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(indices_.size() * sizeof(GLuint)), &indices_[0], GL_STATIC_DRAW);
+
+        glCheckError();
+
+        // transform feedback: inputs
+        glGenVertexArrays(1, &tf_vao_);
+        glBindVertexArray(tf_vao_);
+
+        glGenBuffers(1, &tf_vbo_in_);
+        glBindBuffer(GL_ARRAY_BUFFER, tf_vbo_in_);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(MeshVertex)), nullptr, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(MeshVertex), (GLvoid *)(offsetof(MeshVertex, position)));
+        glEnableVertexAttribArray(0);
+
+        glCheckError();
+
+        // transform feedback: outputs
+        glGenTransformFeedbacks(1, &tfo_);
+        glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, tfo_);
+
+        glGenBuffers(1, &tf_vbo_out_);
+        glBindBuffer(GL_ARRAY_BUFFER, tf_vbo_out_);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(GLfloat)), nullptr, GL_STATIC_DRAW);
+
+        glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tf_vbo_out_);
+
+        glGenQueries(1, &tfq_);
+
+        tf_out_ = new GLfloat[vertices_.size()];
+
+        glCheckError();
+    }
+
+    void Pick(MeshVertexPickResult &result, glm::mat4 model) const {
+        // draw for feedback
+
+        glEnable(GL_RASTERIZER_DISCARD);
+
+        glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, tfo_);
+        glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tf_vbo_out_);
+
+        glBeginQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, tfq_);
+        glBeginTransformFeedback(GL_POINTS);
+
+        glBindVertexArray(vao_);
+        glDrawArrays(GL_POINTS, 0, GLsizei(vertices_.size()));
+
+        glEndTransformFeedback();
+        glEndQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
+
+        glDisable(GL_RASTERIZER_DISCARD);
+
+        glCheckError();
+
+        // query feedback result
+
+        GLint vertices_count = 0;
+        glGetQueryObjectiv(tfq_, GL_QUERY_RESULT, &vertices_count);
+        if (vertices_count != vertices_.size()) {
+            std::cerr << "ERROR: Transform feedback written " << vertices_count << " != " << vertices_.size()
+                      << std::endl;
+            return;
+        }
+
+        glCheckError();
+
+        glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, GLsizeiptr(sizeof(GLfloat) * vertices_count), tf_out_);
+
+        if (glCheckError() == GL_NO_ERROR) {
+            for (size_t i = 0; i < vertices_count; ++i) {
+                if (tf_out_[i] < result.distance) {
+                    result.distance = tf_out_[i];
+                    result.vertex = &vertices_[i];
+                    result.world_position = glm::vec3(model * glm::vec4(vertices_[i].position, 1.0f));
+                }
+            }
+        }
     }
 
 private:
@@ -132,6 +230,10 @@ private:
     float shininess_ = 0;
 
     GLuint vao_ = 0, vbo_ = 0, ebo_ = 0;
+
+    GLuint tfo_ = 0, tfq_ = 0;                           // transform feedback object, query
+    GLuint tf_vao_ = 0, tf_vbo_in_ = 0, tf_vbo_out_ = 0; // input vao, input vbo, output vbo
+    GLfloat *tf_out_;                                    // result copy-back buffer
 
     void LoadMaterials(const aiMesh *mesh,
                        const aiScene *scene,

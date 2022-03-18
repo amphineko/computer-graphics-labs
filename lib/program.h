@@ -34,6 +34,8 @@ public:
     virtual bool Initialize(const std::string &window_title, bool env_map) {
         window_title_ = window_title;
 
+        std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
+
         if (!InitializeWindow()) {
             DestroyWindow();
             return false;
@@ -124,6 +126,8 @@ protected:
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+        glCheckError();
 
         auto viewMatrix = camera_->GetViewMatrix();
         ConfigureShaders(camera_->GetPosition(), display_width_, display_height_, FOV, viewMatrix);
@@ -221,6 +225,8 @@ private:
             shader->SetVec3Array("lightDiffuses", MAX_N_LIGHTS, light_diffuses_);
             shader->SetVec3Array("lightDirections", MAX_N_LIGHTS, light_directions_);
             shader->SetVec3Array("lightPositions", MAX_N_LIGHTS, light_positions_);
+
+            glCheckError();
         }
     }
 

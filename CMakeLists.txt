@@ -62,6 +62,9 @@ target_link_libraries(normalmap ${project_shared_libraries})
 add_executable(transmittance transmittance.cpp ${project_shared_files})
 target_link_libraries(transmittance ${project_shared_libraries})
 
+add_executable(vertex_pick vertex_pick.cpp ${project_shared_files})
+target_link_libraries(vertex_pick ${project_shared_libraries})
+
 include(CMakePrintHelpers)
 cmake_print_variables(ASSIMP_INCLUDE_DIRS)
 cmake_print_variables(ASSIMP_LIBRARIES)
