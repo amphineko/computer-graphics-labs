@@ -150,15 +150,32 @@ public:
         env_map_ = manager.LoadCubeMap(NODE_TEXTURE_ROLE_ENV_MAP, name, paths, base_path);
     }
 
-    virtual void Pick(MeshVertexPickResult &result, ShaderProgram *shader) const {
+    void LoadDeltaNodes(const aiNode *node, const aiScene *scene) {
+        for (auto i = 0; i < node->mNumMeshes; ++i) {
+            meshes_[i]->LoadDeltaMesh(scene->mMeshes[node->mMeshes[i]]);
+        }
+
+        for (auto i = 0; i < node->mNumChildren; ++i) {
+            children_[i]->LoadDeltaNodes(node->mChildren[i], scene);
+        }
+    }
+
+    virtual void Pick(MeshVertexPickResult &global_result, ShaderProgram *shader) const {
         shader->SetMat4("modelMatrix", world_transform_);
 
+        MeshVertexPickResult result;
         for (auto &mesh : meshes_) {
+            result.distance = std::numeric_limits<float>::max();
+
             mesh->Pick(result, world_transform_);
+
+            if (result.distance < global_result.distance) {
+                global_result = result;
+            }
         }
 
         for (auto &child : children_) {
-            child->Pick(result, shader);
+            child->Pick(global_result, shader);
         }
 
         glCheckError();
@@ -172,6 +189,16 @@ public:
     void Scale(float delta_scale) {
         scale_ *= delta_scale;
         UpdateTransformMatrix();
+    }
+
+    void SetDeltaWeight(size_t index, float weight) {
+        for (auto &mesh : meshes_) {
+            mesh->SetDeltaWeight(index, weight);
+        }
+
+        for (auto &child : children_) {
+            child->SetDeltaWeight(index, weight);
+        }
     }
 
     void SetEnvMap(NodeTexture env_map) { env_map_ = env_map; }
@@ -191,6 +218,16 @@ public:
         UpdateTransformMatrix();
     }
 
+    void UpdateDeltaWeights() {
+        for (auto &mesh : meshes_) {
+            mesh->UpdateDeltaWeights();
+        }
+
+        for (auto &child : children_) {
+            child->UpdateDeltaWeights();
+        }
+    }
+
     void UpdateTransformMatrix() {
         local_transform_ = glm::mat4(1.0f);
         local_transform_ *= glm::translate(translation_);
@@ -201,6 +238,16 @@ public:
 
         for (auto &child : children_) {
             child->UpdateTransformMatrix();
+        }
+    }
+
+    void UpdateVertexPosition(float x, float y, float z, float delta_x, float delta_y, float delta_z) {
+        for (auto mesh : meshes_) {
+            mesh->UpdateVertexPosition(x, y, z, delta_x, delta_y, delta_z, world_transform_);
+        }
+
+        for (auto child : children_) {
+            child->UpdateVertexPosition(x, y, z, delta_x, delta_y, delta_z);
         }
     }
 

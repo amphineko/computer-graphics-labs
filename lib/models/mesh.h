@@ -37,9 +37,9 @@ class Mesh;
 struct MeshVertexPickResult {
     float distance;
     const MeshVertex *vertex;
-
-    glm::vec3 display_position;
     glm::vec3 world_position;
+
+    size_t vertex_index;
 
     bool operator<(const MeshVertexPickResult &other) const { return distance < other.distance; }
 };
@@ -57,7 +57,12 @@ public:
         LoadMaterials(mesh, scene, base_path, manager);
     }
 
-    ~Mesh() { delete[] tf_out_; }
+    ~Mesh() {
+        for (auto i : delta_positions_) {
+            delete i;
+        }
+        delete[] tf_out_;
+    }
 
     void Draw(GLuint texture_unit, ShaderProgram *shader) const {
         shader->SetVec3("meshAmbient", ambient_);
@@ -141,6 +146,14 @@ public:
         glBufferData(
             GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(indices_.size() * sizeof(GLuint)), &indices_[0], GL_STATIC_DRAW);
 
+        // delta-position buffer
+        glGenBuffers(1, &vbo_delta_);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_delta_);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(glm::vec3)), nullptr, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (GLvoid *)nullptr);
+        glEnableVertexAttribArray(5);
+
         glCheckError();
 
         // transform feedback: inputs
@@ -171,6 +184,24 @@ public:
         tf_out_ = new GLfloat[vertices_.size()];
 
         glCheckError();
+    }
+
+    void LoadDeltaMesh(const aiMesh *mesh) {
+        delta_positions_.push_back(new std::vector<glm::vec3>());
+        delta_weights_.push_back(0.0f);
+
+        auto back = delta_positions_.back();
+
+        back->reserve(mesh->mNumVertices);
+
+        if (vertices_.size() != mesh->mNumVertices) {
+            std::cerr << "ERROR: delta mesh has different number of vertices" << std::endl;
+        }
+
+        for (size_t i = 0; i < std::min(vertices_.size(), size_t(mesh->mNumVertices)); ++i) {
+            back->push_back(vertices_[i].position -
+                            glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z));
+        }
     }
 
     void Pick(MeshVertexPickResult &result, glm::mat4 model) const {
@@ -219,17 +250,60 @@ public:
         }
     }
 
+    void SetDeltaWeight(size_t index, float weight) { delta_weights_[index] = weight; }
+
+    void UpdateDeltaWeights() {
+        for (size_t i = 0; i < vertices_.size(); ++i) {
+            delta_weighted_[i] = glm::vec3(0.0f);
+        }
+
+        for (size_t weight_i = 0; weight_i < delta_weights_.size(); ++weight_i) {
+            for (size_t vert_i = 0; vert_i < vertices_.size(); ++vert_i) {
+                delta_weighted_[vert_i] += delta_weights_[weight_i] * delta_positions_[weight_i]->at(vert_i);
+            }
+        }
+
+        glBindVertexArray(vao_);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_delta_);
+        glBufferData(
+            GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(glm::vec3)), &delta_weighted_[0], GL_STATIC_DRAW);
+    }
+
+    void UpdateVertexPosition(float x, float y, float z, float delta_x, float delta_y, float delta_z, glm::mat4 model) {
+        bool updated = false;
+
+        for (size_t i = 0; i < vertices_.size(); ++i) {
+            auto dist = glm::distance(glm::vec3(model * glm::vec4(vertices_[i].position, 1.0f)), glm::vec3(x, y, z));
+            if (dist < 0.5f) {
+                vertices_[i].position += glm::vec3(delta_x, delta_y, delta_z) * (dist / 5.0f);
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            glBindVertexArray(vao_);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+            glBufferData(
+                GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(MeshVertex)), &vertices_[0], GL_STATIC_DRAW);
+        }
+    }
+
 private:
     std::vector<MeshVertex> vertices_;
     std::vector<unsigned int> indices_;
     std::vector<MeshTexture> textures_;
+
+    std::vector<glm::vec3> delta_weighted_;
+
+    std::vector<std::vector<glm::vec3> *> delta_positions_;
+    std::vector<float> delta_weights_;
 
     glm::vec3 ambient_ = glm::vec3(0, 0, 0);
     glm::vec3 diffuse_ = glm::vec3(0, 0, 0);
     glm::vec3 specular_ = glm::vec3(0, 0, 0);
     float shininess_ = 0;
 
-    GLuint vao_ = 0, vbo_ = 0, ebo_ = 0;
+    GLuint vao_ = 0, vbo_ = 0, ebo_ = 0, vbo_delta_ = 0;
 
     GLuint tfo_ = 0, tfq_ = 0;                           // transform feedback object, query
     GLuint tf_vao_ = 0, tf_vbo_in_ = 0, tf_vbo_out_ = 0; // input vao, input vbo, output vbo
@@ -320,6 +394,11 @@ private:
                         ? glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z)
                         : kDefaultMeshBitangent;
             }
+        }
+
+        delta_weighted_.reserve(vertices_.size());
+        for (unsigned int i = 0; i < vertices_.size(); ++i) {
+            delta_weighted_[i] = glm::vec3(0.0f, 0.0f, 0.0f);
         }
 
         // load face indices
