@@ -13,6 +13,8 @@
 
 #include "textures.h"
 
+using namespace std::placeholders;
+
 #define NOT_NAN(x) (std::fpclassify(x) != FP_NAN)
 
 const glm::vec3 kDefaultMeshNormal = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -39,7 +41,7 @@ struct MeshVertexPickResult {
     const MeshVertex *vertex;
     glm::vec3 world_position;
 
-    size_t vertex_index;
+    std::function<void(const glm::vec3 &)> update_position;
 
     bool operator<(const MeshVertexPickResult &other) const { return distance < other.distance; }
 };
@@ -204,7 +206,7 @@ public:
         }
     }
 
-    void Pick(MeshVertexPickResult &result, glm::mat4 model) const {
+    void Pick(MeshVertexPickResult &result, glm::mat4 model, Mesh *self) const {
         // draw for feedback
 
         glEnable(GL_RASTERIZER_DISCARD);
@@ -245,6 +247,19 @@ public:
                     result.distance = tf_out_[i];
                     result.vertex = &vertices_[i];
                     result.world_position = glm::vec3(model * glm::vec4(vertices_[i].position, 1.0f));
+
+                    auto index = i;
+                    result.update_position = [self, index](const glm::vec3 &position) {
+                        self->vertices_[index].position = position;
+
+                        // re-buffer vertices
+                        glBindVertexArray(self->vao_);
+                        glBindBuffer(GL_ARRAY_BUFFER, self->vbo_);
+                        glBufferData(GL_ARRAY_BUFFER,
+                                     (GLsizeiptr)(self->vertices_.size() * sizeof(MeshVertex)),
+                                     &self->vertices_[0],
+                                     GL_STATIC_DRAW);
+                    };
                 }
             }
         }
@@ -267,25 +282,6 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vbo_delta_);
         glBufferData(
             GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(glm::vec3)), &delta_weighted_[0], GL_STATIC_DRAW);
-    }
-
-    void UpdateVertexPosition(float x, float y, float z, float delta_x, float delta_y, float delta_z, glm::mat4 model) {
-        bool updated = false;
-
-        for (size_t i = 0; i < vertices_.size(); ++i) {
-            auto dist = glm::distance(glm::vec3(model * glm::vec4(vertices_[i].position, 1.0f)), glm::vec3(x, y, z));
-            if (dist < 0.5f) {
-                vertices_[i].position += glm::vec3(delta_x, delta_y, delta_z) * (dist / 5.0f);
-                updated = true;
-            }
-        }
-
-        if (updated) {
-            glBindVertexArray(vao_);
-            glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-            glBufferData(
-                GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(MeshVertex)), &vertices_[0], GL_STATIC_DRAW);
-        }
     }
 
 private:

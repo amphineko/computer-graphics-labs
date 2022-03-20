@@ -163,15 +163,8 @@ public:
     virtual void Pick(MeshVertexPickResult &global_result, ShaderProgram *shader) const {
         shader->SetMat4("modelMatrix", world_transform_);
 
-        MeshVertexPickResult result;
         for (auto &mesh : meshes_) {
-            result.distance = std::numeric_limits<float>::max();
-
-            mesh->Pick(result, world_transform_);
-
-            if (result.distance < global_result.distance) {
-                global_result = result;
-            }
+            mesh->Pick(global_result, world_transform_, mesh);
         }
 
         for (auto &child : children_) {
@@ -238,16 +231,6 @@ public:
 
         for (auto &child : children_) {
             child->UpdateTransformMatrix();
-        }
-    }
-
-    void UpdateVertexPosition(float x, float y, float z, float delta_x, float delta_y, float delta_z) {
-        for (auto mesh : meshes_) {
-            mesh->UpdateVertexPosition(x, y, z, delta_x, delta_y, delta_z, world_transform_);
-        }
-
-        for (auto child : children_) {
-            child->UpdateVertexPosition(x, y, z, delta_x, delta_y, delta_z);
         }
     }
 

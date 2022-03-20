@@ -1,6 +1,6 @@
 #include "lib/program.h"
 
-#define VERTEX_POSITION_RANGE 35.0f
+#define VERTEX_POSITION_RANGE 50.0f
 
 const std::vector<std::pair<std::string, std::string>> delta_shapes_ = {
     {"jaw_open", "resources/models/high-res-blendshapes/Mery_jaw_open.obj"},
@@ -84,7 +84,7 @@ private:
     Scene *obj_, *axis_;
 
     double mouse_x_, mouse_y_;
-    MeshVertexPickResult vertex_, picked_vertex_{.vertex = nullptr, .vertex_index = SIZE_MAX};
+    MeshVertexPickResult vertex_, selected_vertex_{};
 
     std::vector<float> end_delta_weights_, current_delta_weights_;
     std::vector<std::vector<float>> weight_frames_;
@@ -98,7 +98,13 @@ private:
 
         phong_shader_->Use();
         obj_->Draw(phong_shader_);
-        axis_->Draw(phong_shader_);
+
+        if (selected_vertex_.vertex != nullptr) {
+            auto position = selected_vertex_.world_position;
+            axis_->SetPosition(position.x, position.y, position.z);
+
+            axis_->Draw(phong_shader_);
+        }
 
         // pick vertex from the screen
 
@@ -118,12 +124,7 @@ private:
         // register manipulator
 
         if (glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-            picked_vertex_ = vertex_;
-        }
-
-        if (picked_vertex_.vertex != nullptr) {
-            auto world_position = picked_vertex_.world_position;
-            axis_->SetPosition(world_position.x, world_position.y, world_position.z);
+            selected_vertex_ = vertex_;
         }
 
         // linear weight effector
@@ -180,18 +181,16 @@ private:
             ImGui::Text("World Y: %f", vertex_.world_position.y);
             ImGui::Text("World Z: %f", vertex_.world_position.z);
 
-            if (picked_vertex_.vertex != nullptr && picked_vertex_.vertex_index != SIZE_MAX) {
-                auto x = picked_vertex_.world_position.x;
-                auto y = picked_vertex_.world_position.y;
-                auto z = picked_vertex_.world_position.z;
+            if (selected_vertex_.vertex != nullptr) {
+                auto x = selected_vertex_.vertex->position.x;
+                auto y = selected_vertex_.vertex->position.y;
+                auto z = selected_vertex_.vertex->position.z;
+
                 if (ImGui::SliderFloat("X", &x, -VERTEX_POSITION_RANGE, VERTEX_POSITION_RANGE) ||
                     ImGui::SliderFloat("Y", &y, -VERTEX_POSITION_RANGE, VERTEX_POSITION_RANGE) ||
                     ImGui::SliderFloat("Z", &z, -VERTEX_POSITION_RANGE, VERTEX_POSITION_RANGE)) {
 
-                    auto old_x = picked_vertex_.world_position.x;
-                    auto old_y = picked_vertex_.world_position.y;
-                    auto old_z = picked_vertex_.world_position.z;
-                    obj_->UpdateVertexPosition(old_x, old_y, old_z, old_x - x, old_y - y, old_z - z);
+                    selected_vertex_.update_position(glm::vec3(x, y, z));
                 }
             }
 
