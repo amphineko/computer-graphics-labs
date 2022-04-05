@@ -10,6 +10,8 @@
 
 #include "../utils.h"
 
+#define MAX_N_LIGHTS 16
+
 class ShaderProgram {
 public:
     ShaderProgram(const char *vertexShaderPath, const char *fragmentShaderPath) {
@@ -38,26 +40,33 @@ public:
         glCheckError();
     }
 
+    void ConfigureCamera(const glm::vec3 &camera_position, const glm::mat4 &projection, const glm::mat4 &view) {
+        Use();
+        glCheckError();
+
+        SetVec3("cameraPosition", camera_position);
+        SetMat4("projectionMatrix", projection);
+        SetMat4("viewMatrix", view);
+        glCheckError();
+    }
+
+    void ConfigureLights(GLuint n_lights,
+                         const glm::vec3 *positions,
+                         const glm::vec3 *directions,
+                         const glm::vec3 *diffuses) {
+        Use();
+        glCheckError();
+
+        SetInt("nLights", n_lights);
+        SetVec3Array("lightDiffuses", MAX_N_LIGHTS, diffuses);
+        SetVec3Array("lightDirections", MAX_N_LIGHTS, directions);
+        SetVec3Array("lightPositions", MAX_N_LIGHTS, positions);
+        glCheckError();
+    }
+
     [[nodiscard]] bool IsReady() const { return program_ != 0; }
 
     void Use() const { glUseProgram(this->program_); }
-
-    GLint GetInt(const char *name) const {
-        GLint location = glGetUniformLocation(program_, name);
-        if (location == -1) {
-            std::cerr << "Could not find uniform " << name << std::endl;
-            return 0;
-        }
-
-        GLint result;
-        glGetUniformiv(program_, location, &result);
-        return result;
-    }
-
-    void GetVec3(const char *name, glm::vec3 &value) const {
-        GLint location = glGetUniformLocation(program_, name);
-        glGetUniformfv(program_, location, glm::value_ptr(value));
-    }
 
     void SetFloat(const char *name, float value) const { glUniform1f(glGetUniformLocation(program_, name), value); }
 
@@ -86,7 +95,7 @@ public:
 protected:
     GLuint program_ = 0;
 
-    ShaderProgram() {}
+    ShaderProgram() = default;
 
     static bool EnsureProgramLinked(GLuint program) {
         GLint success;

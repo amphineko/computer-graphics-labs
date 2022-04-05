@@ -16,7 +16,8 @@
 
 #define ENV_MAP_SIZE 1024
 #define FOV 60.0f
-#define MAX_N_LIGHTS 16
+#define Z_NEAR 0.1f
+#define Z_FAR 100.0f
 
 static const std::map<GLenum, glm::vec3> cube_map_faces = {
     {GL_TEXTURE_CUBE_MAP_POSITIVE_X, glm::vec3(1.0f, 0.0f, 0.0f)},
@@ -53,7 +54,7 @@ public:
     }
 
     void Run() {
-        glfwSetWindowSize(window_, display_width_, display_height_);
+        glfwSetWindowSize(window_, window_width_, window_height_);
 
         last_frame_clock_ = glfwGetTime();
         while (!glfwWindowShouldClose(window_)) {
@@ -112,7 +113,7 @@ protected:
     std::vector<ShaderProgram *> shaders_{};
     TextureManager texture_manager_;
 
-    int display_width_ = 1024, display_height_ = 768;
+    int window_width_ = 1024, window_height_ = 768;
     bool mouse_hold_ = false;
 
     GLFWwindow *window_ = nullptr;
@@ -120,9 +121,31 @@ protected:
 
     double last_frame_time_ = 0, current_frame_clock_ = 0;
 
-    virtual void Draw() {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, display_width_, display_height_);
+    GLuint quad_vao_ = 0, quad_vbo_ = 0;
+
+    /**
+     * @param width viewport width
+     * @param height viewport height
+     */
+    virtual glm::mat4
+    ConfigureShaders(glm::vec3 camera_position, uint width, uint height, float fov, glm::mat4 view_matrix) {
+        auto aspect = (float)width / (float)height;
+        auto projection_matrix = glm::perspective(glm::radians(fov), aspect, Z_NEAR, Z_FAR);
+
+        for (auto &shader : shaders_) {
+            shader->ConfigureCamera(camera_position, projection_matrix, view_matrix);
+        }
+
+        return projection_matrix;
+    }
+
+    virtual void Draw() { DrawTo(0, window_width_, window_height_); }
+
+    virtual void DrawTo(GLuint fbo) { DrawTo(fbo, window_width_, window_height_); }
+
+    virtual void DrawTo(GLuint fbo, GLsizei viewport_width, GLsizei viewport_height) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glViewport(0, 0, viewport_width, viewport_height);
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -130,7 +153,9 @@ protected:
         glCheckError();
 
         auto viewMatrix = camera_->GetViewMatrix();
-        ConfigureShaders(camera_->GetPosition(), display_width_, display_height_, FOV, viewMatrix);
+        ConfigureShaders(camera_->GetPosition(), window_width_, window_height_, FOV, viewMatrix);
+
+        glCheckError();
     }
 
     virtual void DrawImGui() {
@@ -170,6 +195,13 @@ protected:
         ConfigureShaders(position, ENV_MAP_SIZE, ENV_MAP_SIZE, 90, viewMatrix);
     }
 
+    virtual void HandleFramebufferSizeChange(int width, int height) {
+        std::cout << "INFO: Resized window to " << width << "x" << height << std::endl;
+        window_width_ = width;
+        window_height_ = height;
+        glViewport(0, 0, width, height);
+    }
+
     void SetLight(glm::vec3 position, glm::vec3 direction) { SetLight(0, position, direction); }
 
     void SetLight(size_t index, glm::vec3 position, glm::vec3 direction) {
@@ -185,6 +217,10 @@ protected:
         light_diffuses_[index] = diffuse;
         light_directions_[index] = direction;
         light_positions_[index] = position;
+
+        for (auto shader : shaders_) {
+            shader->ConfigureLights(n_lights_, light_positions_, light_directions_, light_diffuses_);
+        }
     }
 
     void SetLightCount(size_t n_lights) { n_lights_ = GLint(n_lights); }
@@ -205,30 +241,6 @@ private:
     std::vector<double> frame_times;
     double total_frame_time = 0;
     double frame_per_sec = 0, frame_time_avg = 0, frame_time_var = 0;
-
-    /**
-     * @param width viewport width
-     * @param height viewport height
-     */
-    void ConfigureShaders(glm::vec3 camera_position, uint width, uint height, float fov, glm::mat4 view_matrix) {
-        auto aspect = (float)width / (float)height;
-        auto projection = glm::perspective(glm::radians(fov), aspect, 0.1f, 1000.0f);
-
-        for (auto &shader : shaders_) {
-            shader->Use();
-
-            shader->SetVec3("cameraPosition", camera_position);
-            shader->SetMat4("projectionMatrix", projection);
-            shader->SetMat4("viewMatrix", view_matrix);
-
-            shader->SetInt("nLights", n_lights_);
-            shader->SetVec3Array("lightDiffuses", MAX_N_LIGHTS, light_diffuses_);
-            shader->SetVec3Array("lightDirections", MAX_N_LIGHTS, light_directions_);
-            shader->SetVec3Array("lightPositions", MAX_N_LIGHTS, light_positions_);
-
-            glCheckError();
-        }
-    }
 
     void DestroyEnvMap() {
         if (env_map_depth_rbo_) {
@@ -255,12 +267,9 @@ private:
         }
     }
 
-    static void HandleFramebufferSizeChange(GLFWwindow *window, int width, int height) {
+    static void HandleFramebufferSizeChangeEvent(GLFWwindow *window, int width, int height) {
         auto that = (Program *)glfwGetWindowUserPointer(window);
-        std::cout << "INFO: Resized window to " << width << "x" << height << std::endl;
-        that->display_width_ = width;
-        that->display_height_ = height;
-        glViewport(0, 0, width, height);
+        that->HandleFramebufferSizeChange(width, height);
     }
 
     void HandleKeyboardInput(double delta_frame) {
@@ -304,7 +313,7 @@ private:
 
     void HandleMouseInput() {
         double mouse_x, mouse_y;
-        double center_x = double(display_width_) / 2, center_y = double(display_height_) / 2;
+        double center_x = double(window_width_) / 2, center_y = double(window_height_) / 2;
         if (glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
             if (!mouse_hold_) {
                 glfwSetCursorPos(window_, center_x, center_y);
@@ -315,8 +324,8 @@ private:
                 glfwGetCursorPos(window_, &mouse_x, &mouse_y);
                 glfwSetCursorPos(window_, center_x, center_y);
 
-                mouse_x = (mouse_x - center_x) / display_width_;
-                mouse_y = (mouse_y - center_y) / display_height_;
+                mouse_x = (mouse_x - center_x) / window_width_;
+                mouse_y = (mouse_y - center_y) / window_height_;
                 camera_->Rotate(float(-mouse_y), float(mouse_x));
             }
         } else {
@@ -336,7 +345,6 @@ private:
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         for (auto [face, _] : cube_map_faces) {
             glTexImage2D(face, 0, GL_RGBA, ENV_MAP_SIZE, ENV_MAP_SIZE, 0, GL_RGBA, GL_FLOAT, nullptr);
         }
@@ -391,7 +399,7 @@ private:
 
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
-        window_ = glfwCreateWindow(display_width_, display_height_, window_title_.c_str(), nullptr, nullptr);
+        window_ = glfwCreateWindow(window_width_, window_height_, window_title_.c_str(), nullptr, nullptr);
         if (window_ == nullptr) {
             std::cerr << "FATAL: Failed to open GLFW window." << std::endl;
             return false;
@@ -399,7 +407,7 @@ private:
         glfwMakeContextCurrent(window_);
 
         glfwSetWindowUserPointer(window_, this);
-        glfwSetFramebufferSizeCallback(window_, &HandleFramebufferSizeChange);
+        glfwSetFramebufferSizeCallback(window_, &HandleFramebufferSizeChangeEvent);
 
         // load extensions
 

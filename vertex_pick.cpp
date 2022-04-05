@@ -111,8 +111,8 @@ private:
         picker_shader_->Use();
 
         glfwGetCursorPos(window_, &mouse_x_, &mouse_y_);
-        mouse_x_ = mouse_x_ / float(display_width_) * 2.0 - 1.0;
-        mouse_y_ = mouse_y_ / float(display_height_) * -2.0 + 1.0;
+        mouse_x_ = mouse_x_ / float(window_width_) * 2.0 - 1.0;
+        mouse_y_ = mouse_y_ / float(window_height_) * -2.0 + 1.0;
 
         picker_shader_->SetVec2("mousePos", glm::vec2(mouse_x_, mouse_y_));
 
