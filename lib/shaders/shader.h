@@ -14,6 +14,37 @@
 
 class ShaderProgram {
 public:
+    ShaderProgram(const char *vertexShaderPath, const char *geometryShaderPath, const char *fragmentShaderPath) {
+        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        GLuint geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
+        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        if (!LoadShaderFromFile(vertexShaderPath, GL_VERTEX_SHADER, vertexShader) ||
+            !LoadShaderFromFile(geometryShaderPath, GL_GEOMETRY_SHADER, geometryShader) ||
+            !LoadShaderFromFile(fragmentShaderPath, GL_FRAGMENT_SHADER, fragmentShader)) {
+            glDeleteShader(vertexShader);
+            glDeleteShader(geometryShader);
+            glDeleteShader(fragmentShader);
+            return;
+        }
+
+        program_ = glCreateProgram();
+        glAttachShader(program_, vertexShader);
+        glAttachShader(program_, geometryShader);
+        glAttachShader(program_, fragmentShader);
+        glLinkProgram(program_);
+
+        glDeleteShader(vertexShader);
+        glDeleteShader(geometryShader);
+        glDeleteShader(fragmentShader);
+
+        if (!EnsureProgramLinked(program_)) {
+            glDeleteProgram(program_);
+            program_ = 0;
+        }
+
+        glCheckError();
+    }
+
     ShaderProgram(const char *vertexShaderPath, const char *fragmentShaderPath) {
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
