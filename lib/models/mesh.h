@@ -8,8 +8,8 @@
 #include <iostream>
 #include <vector>
 
+#include "../shaders/feedback_shader.h"
 #include "../shaders/shader.h"
-#include "../shaders/vertex_picker.h"
 
 #include "textures.h"
 
@@ -177,7 +177,7 @@ public:
 
         glGenBuffers(1, &tf_vbo_out_);
         glBindBuffer(GL_ARRAY_BUFFER, tf_vbo_out_);
-        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(GLfloat)), nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertices_.size() * sizeof(GLfloat)), nullptr, GL_DYNAMIC_READ);
 
         glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tf_vbo_out_);
 

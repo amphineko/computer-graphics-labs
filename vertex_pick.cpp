@@ -39,7 +39,7 @@ public:
         phong_shader_ = new ShaderProgram("shaders/phong-delta.vert", "shaders/blinn-phong.frag");
         shaders_.push_back(phong_shader_);
 
-        picker_shader_ = new VertexPickerShaderProgram("shaders/vertex-pick.vert");
+        picker_shader_ = new FeedbackShaderProgram("shaders/vertex-pick.vert");
         shaders_.push_back(picker_shader_);
 
         for (auto shader : shaders_) {

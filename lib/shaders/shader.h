@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -14,61 +15,29 @@
 
 class ShaderProgram {
 public:
-    ShaderProgram(const char *vertexShaderPath, const char *geometryShaderPath, const char *fragmentShaderPath) {
-        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        GLuint geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
-        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        if (!LoadShaderFromFile(vertexShaderPath, GL_VERTEX_SHADER, vertexShader) ||
-            !LoadShaderFromFile(geometryShaderPath, GL_GEOMETRY_SHADER, geometryShader) ||
-            !LoadShaderFromFile(fragmentShaderPath, GL_FRAGMENT_SHADER, fragmentShader)) {
-            glDeleteShader(vertexShader);
-            glDeleteShader(geometryShader);
-            glDeleteShader(fragmentShader);
-            return;
+    ShaderProgram(const char *vertexShaderPath, const char *geometryShaderPath, const char *fragmentShaderPath)
+        : ShaderProgram({
+              {vertexShaderPath, GL_VERTEX_SHADER},
+              {geometryShaderPath, GL_GEOMETRY_SHADER},
+              {fragmentShaderPath, GL_FRAGMENT_SHADER},
+          }) {}
+
+    ShaderProgram(const char *vertexShaderPath, const char *fragmentShaderPath)
+        : ShaderProgram({
+              {vertexShaderPath, GL_VERTEX_SHADER},
+              {fragmentShaderPath, GL_FRAGMENT_SHADER},
+          }) {}
+
+    ShaderProgram(const std::vector<std::pair<std::string, GLenum>> &shader_sources) {
+        std::vector<GLuint> shaders;
+        if (LoadShadersFromFiles(shader_sources, shaders)) {
+            program_ = glCreateProgram();
+            if (!LinkProgramFromShaders(shaders, program_)) {
+                glDeleteProgram(program_);
+                program_ = 0;
+            }
         }
-
-        program_ = glCreateProgram();
-        glAttachShader(program_, vertexShader);
-        glAttachShader(program_, geometryShader);
-        glAttachShader(program_, fragmentShader);
-        glLinkProgram(program_);
-
-        glDeleteShader(vertexShader);
-        glDeleteShader(geometryShader);
-        glDeleteShader(fragmentShader);
-
-        if (!EnsureProgramLinked(program_)) {
-            glDeleteProgram(program_);
-            program_ = 0;
-        }
-
-        glCheckError();
-    }
-
-    ShaderProgram(const char *vertexShaderPath, const char *fragmentShaderPath) {
-        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        if (!LoadShaderFromFile(vertexShaderPath, GL_VERTEX_SHADER, vertexShader) ||
-            !LoadShaderFromFile(fragmentShaderPath, GL_FRAGMENT_SHADER, fragmentShader)) {
-            glDeleteShader(vertexShader);
-            glDeleteShader(fragmentShader);
-            return;
-        }
-
-        program_ = glCreateProgram();
-        glAttachShader(program_, vertexShader);
-        glAttachShader(program_, fragmentShader);
-        glLinkProgram(program_);
-
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-
-        if (!EnsureProgramLinked(program_)) {
-            glDeleteProgram(program_);
-            program_ = 0;
-        }
-
-        glCheckError();
+        DestroyShaders(shaders);
     }
 
     void ConfigureCamera(const glm::vec3 &camera_position, const glm::mat4 &projection, const glm::mat4 &view) {
@@ -128,6 +97,12 @@ protected:
 
     ShaderProgram() = default;
 
+    static void DestroyShaders(const std::vector<GLuint> &entries) {
+        for (auto &entry : entries) {
+            glDeleteShader(entry);
+        }
+    }
+
     static bool EnsureProgramLinked(GLuint program) {
         GLint success;
         glGetProgramiv(program, GL_LINK_STATUS, &success);
@@ -142,6 +117,15 @@ protected:
         }
 
         return true;
+    }
+
+    static bool LinkProgramFromShaders(const std::vector<GLuint> &shaders, GLuint &program) {
+        for (auto shader : shaders) {
+            glAttachShader(program, shader);
+        }
+        glLinkProgram(program);
+
+        return EnsureProgramLinked(program);
     }
 
     static bool LoadShaderFromFile(const char *filePath, GLenum shaderType, GLuint &shader) {
@@ -166,6 +150,22 @@ protected:
         const char *pShaderCode = shaderCode.c_str();
         glShaderSource(shader, 1, &pShaderCode, nullptr);
         return EnsureShaderCompiled(shader, shaderType);
+    }
+
+    static bool LoadShadersFromFiles(const std::vector<std::pair<std::string, GLenum>> &shader_sources,
+                                     std::vector<GLuint> &shaders) {
+        for (auto &source : shader_sources) {
+            const auto &[path, type] = source;
+
+            auto shader = glCreateShader(type);
+            shaders.push_back(shader);
+
+            if (!LoadShaderFromFile(path.c_str(), type, shader)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 private:

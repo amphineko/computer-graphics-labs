@@ -13,13 +13,18 @@ public:
     bool Initialize(const std::string &window_title) { return Initialize(window_title, true); }
 
 private:
-    ShaderProgram *phong_, *blur_, *len_, *tex_;
+    ShaderProgram *phong_, *blur_, *len_, *tex_, *depth_pick_;
 
     Scene *obj_;
 
     GLuint null_vao_ = 0;
     GLuint fbo_ = 0, color_rto_ = 0, depth_rto_ = 0;
     GLuint blur_fbo_ = 0, blur_color_rto_ = 0, blur_depth_rbo_ = 0;
+
+    GLuint depth_pick_tfo_ = 0, depth_pick_query_ = 0;
+    GLuint depth_pick_vao_ = 0, depth_pick_vbo_out_ = 0;
+    GLfloat picked_depth_[4] = {2.718281828459045f};
+    bool enable_depth_pick_ = true;
 
     float depth_focus_ = 1.0f, depth_focus_max_ = 50.0f;
 
@@ -36,6 +41,11 @@ private:
 
         len_->Use();
         len_->SetMat4("inverseProjectionMatrix", inverseProjectionMatrix);
+
+        if (enable_depth_pick_) {
+            depth_pick_->Use();
+            depth_pick_->SetMat4("inverseProjectionMatrix", inverseProjectionMatrix);
+        }
     }
 
     void Draw() override {
@@ -91,6 +101,13 @@ private:
 
         DrawQuad();
         glCheckError();
+
+        // pick depth
+
+        if (enable_depth_pick_) {
+            PickDepth();
+            depth_focus_ = picked_depth_[0];
+        }
     }
 
     void DrawImGui() override {
@@ -114,18 +131,40 @@ private:
         ImGui::SliderInt("Level", &draw_blur_level_, 0, 5);
         ImGui::TreePop();
 
+        ImGui::TreeNodeEx("Misc", ImGuiTreeNodeFlags_DefaultOpen);
+        ImGui::Checkbox("Pick Depth by Cursor", &enable_depth_pick_);
+        if (enable_depth_pick_) {
+            auto cursor = GetCursorPosition();
+            ImGui::Text("Cursor Position: %f, %f", cursor.x, cursor.y);
+            ImGui::Text("Picked Depth: %f", picked_depth_[0]);
+        }
+        ImGui::TreePop();
+
         ImGui::End();
     }
 
-    void DrawQuad() {
+    void DrawQuad() const {
         glBindVertexArray(null_vao_);
         glDrawArrays(GL_TRIANGLES, 0, 3);
+    }
+
+    glm::vec2 GetCursorPosition() const {
+        double x, y;
+        glfwGetCursorPos(window_, &x, &y);
+        return {x / window_width_, 1 - y / window_height_};
+    }
+
+    void HandleFramebufferSizeChange(int width, int height) override {
+        Program::HandleFramebufferSizeChange(width, height);
+        ResizeRenderTarget();
     }
 
     bool Initialize(const std::string &window_title, bool env_map) override {
         if (!Program::Initialize(window_title, true)) {
             return false;
         }
+
+        // null vao for drawing full-screen quad
 
         glGenVertexArrays(1, &null_vao_);
 
@@ -160,10 +199,23 @@ private:
             return false;
         }
 
+        depth_pick_ = new FeedbackShaderProgram(
+            {
+                {"shaders/lens/depth-pick.vert", GL_VERTEX_SHADER},
+                {"shaders/lens/depth-pick.geom", GL_GEOMETRY_SHADER},
+                {"shaders/lens/depth-pick.frag", GL_FRAGMENT_SHADER},
+            },
+            {"gDepth"});
+        if (!depth_pick_->IsReady()) {
+            std::cerr << "FATAL: Failed to initialize picker shader" << std::endl;
+            return false;
+        }
+
         shaders_.push_back(phong_);
         shaders_.push_back(blur_);
         shaders_.push_back(len_);
         shaders_.push_back(tex_);
+        shaders_.push_back(depth_pick_);
 
         // configure lights
 
@@ -226,7 +278,6 @@ private:
         glGenFramebuffers(1, &blur_fbo_);
         glBindFramebuffer(GL_FRAMEBUFFER, blur_fbo_);
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, blur_color_rto_, 0);
-        //        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, blur_depth_rbo_);
         glCheckError();
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -234,15 +285,66 @@ private:
             return false;
         }
 
+        // initialize transform feedback for depth picking
+
+        glGenTransformFeedbacks(1, &depth_pick_tfo_);
+        glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, depth_pick_tfo_);
+
+        glGenBuffers(1, &depth_pick_vbo_out_);
+        glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, depth_pick_vbo_out_);
+        glBufferData(GL_TRANSFORM_FEEDBACK_BUFFER, sizeof(picked_depth_), &picked_depth_[0], GL_DYNAMIC_READ);
+        glBindBufferRange(GL_TRANSFORM_FEEDBACK_BUFFER, 0, depth_pick_vbo_out_, 0, sizeof(picked_depth_));
+
+        glGenQueries(1, &depth_pick_query_);
+
+        glGenVertexArrays(1, &depth_pick_vao_);
+        glBindVertexArray(depth_pick_vao_);
+
+        glCheckError();
+
+        // re-apply window size
+
         glfwGetWindowSize(window_, &window_width_, &window_height_);
         glfwSetWindowSize(window_, window_width_, window_height_);
 
         return true;
     }
 
-    void HandleFramebufferSizeChange(int width, int height) override {
-        Program::HandleFramebufferSizeChange(width, height);
-        ResizeRenderTarget();
+    void PickDepth() {
+        // configure drawing
+
+        glBindVertexArray(null_vao_);
+
+        depth_pick_->Use();
+        depth_pick_->SetVec2("cursorPosition", GetCursorPosition());
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, depth_rto_);
+        depth_pick_->SetInt("depthTexture", 0);
+
+        glCheckError();
+
+        // configure transform feedback
+
+        glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, depth_pick_tfo_);
+        if (glIsTransformFeedback(depth_pick_tfo_) != GL_TRUE) {
+            std::cerr << "FATAL: Failed to bind transform feedback object" << std::endl;
+            return;
+        }
+        glBeginTransformFeedback(GL_LINES);
+        glCheckError();
+
+        // draw
+
+        glDrawArrays(GL_POINTS, 0, 1);
+        glCheckError();
+
+        // read back
+
+        glEndTransformFeedback();
+        glCheckError();
+
+        glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, sizeof(picked_depth_), &picked_depth_[0]);
     }
 
     void ResizeRenderTarget() {
