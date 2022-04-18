@@ -20,11 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libassimp-dev libglew-dev libglfw3-dev xorg-dev
-    
-    - name: Install LLVM + Clang 13.1.6
-      run: |
-        sudo bash <( curl -fsSL https://apt.llvm.org/llvm.sh ) 13.1.6
+        sudo apt-get install -y clang-13 libassimp-dev libglew-dev libglfw3-dev xorg-dev
       
     - name: Build ozz-animation
       run: |
@@ -34,8 +30,8 @@ jobs:
 
     - name: Build
       run: |
-        export CC=$(where clang)
-        export CXX=$(where clang++)
+        export CC=$(/usr/bin/clang-13)
+        export CXX=$(/usr/bin/clang++-13)
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} .
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
