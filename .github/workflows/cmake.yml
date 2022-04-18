@@ -24,7 +24,7 @@ jobs:
     
     - name: Install LLVM + Clang 13.1.6
       run: |
-        bash <( curl -fsSL https://apt.llvm.org/llvm.sh ) 13.1.6
+        sudo bash <( curl -fsSL https://apt.llvm.org/llvm.sh ) 13.1.6
       
     - name: Build ozz-animation
       run: |
