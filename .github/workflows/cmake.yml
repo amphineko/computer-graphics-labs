@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang-13 libassimp-dev libglew-dev libglfw3-dev xorg-dev
+        sudo apt-get install -y clang-12 libassimp-dev libglew-dev libglfw3-dev xorg-dev
       
     - name: Build ozz-animation
       run: |
@@ -30,8 +30,8 @@ jobs:
 
     - name: Build
       run: |
-        export CC=$(/usr/bin/clang-13)
-        export CXX=$(/usr/bin/clang++-13)
+        export CC=$(/usr/bin/clang-12)
+        export CXX=$(/usr/bin/clang++-12)
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} .
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
