@@ -26,7 +26,7 @@ private:
     GLfloat picked_depth_[4] = {2.718281828459045f};
     bool enable_depth_pick_ = true;
 
-    float depth_focus_ = 1.0f, depth_focus_max_ = 50.0f;
+    float depth_focus_ = 1.0f, depth_focus_max_ = 50.0f, depth_step_ = 0.6f;
 
     float depth_scale_max_ = 15.0f, depth_scale_min_ = 5.0f;
     bool draw_depth_texture_ = false;
@@ -88,6 +88,7 @@ private:
 
         len_->SetFloat("focusDistance", depth_focus_);
         len_->SetFloat("focusDistanceMax", depth_focus_max_);
+        len_->SetFloat("focusStep", depth_step_);
 
         len_->SetInt("drawDepth", draw_depth_texture_);
         len_->SetFloat("drawDepthMax", depth_scale_max_);
@@ -117,7 +118,8 @@ private:
 
         ImGui::TreeNodeEx("Camera", ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::SliderFloat("Focus Distance", &depth_focus_, 0.001f, 30.0f);
-        ImGui::SliderFloat("Focus Distance Max", &depth_focus_max_, 1.0f, 30.0f);
+        ImGui::SliderFloat("Focus Far", &depth_focus_max_, 1.0f, 30.0f);
+        ImGui::SliderFloat("Focus Step", &depth_step_, 0.1f, 50.0f);
         ImGui::TreePop();
 
         ImGui::TreeNodeEx("Depth Texture", ImGuiTreeNodeFlags_DefaultOpen);
@@ -128,7 +130,7 @@ private:
 
         ImGui::TreeNodeEx("Blurred Textures", ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::Checkbox("Draw", &draw_blur_);
-        ImGui::SliderInt("Level", &draw_blur_level_, 0, 5);
+        ImGui::SliderInt("Level", &draw_blur_level_, 0, 15);
         ImGui::TreePop();
 
         ImGui::TreeNodeEx("Misc", ImGuiTreeNodeFlags_DefaultOpen);
@@ -170,8 +172,8 @@ private:
 
         // configure camera
 
-        camera_->SetPosition(0.0, 0.0, 0.0);
-        camera_->SetRotation(0.0f, -30.0f);
+        camera_->SetPosition(2.5, 0.4, 0.15);
+        camera_->SetRotation(0.0f, -170.0f);
 
         // load shaders
 
@@ -219,15 +221,14 @@ private:
 
         // configure lights
 
-        SetLightCount(3);
-        SetLight(0, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, -2.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-        SetLight(1, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-        SetLight(2, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+        SetLightCount(2);
+        SetLight(0, glm::vec3(2.5f, 0.5f, 0.05f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.5f, 0.5f, 0.5f));
+        SetLight(1, glm::vec3(5.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.5f, 0.5f));
 
         // load objects
 
-        if (!Scene::CreateFromFile("resources/models/corridor/scene.gltf", obj_, texture_manager_)) {
-            std::cerr << "FATAL: Failed to load brick wall" << std::endl;
+        if (!Scene::CreateFromFile("resources/models/lens_showcase/scene.gltf", obj_, texture_manager_)) {
+            std::cerr << "FATAL: Failed to load scene" << std::endl;
             return false;
         }
         obj_->Initialize();

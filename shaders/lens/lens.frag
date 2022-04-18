@@ -11,6 +11,7 @@ uniform sampler2D depthTexture;
 
 uniform float focusDistance;
 uniform float focusDistanceMax;
+uniform float focusStep;
 
 uniform int drawDepth;
 uniform float drawDepthMax;
@@ -27,12 +28,12 @@ void main() {
     vec3 viewPos = viewPosW.xyz / viewPosW.w;
 
     float depth = -viewPos.z;
-    float focusStep = abs(focusDistanceMax - focusDistance) / MAX_BLUR_LAYERS;
-    float focusLevel = abs(depth - focusDistance) / focusStep;
 
-    vec3 result = texture(colorTexture, vec3(vUv, focusLevel)).rgb * 0.625;
-    result += texture(colorTexture, vec3(vUv, clamp(focusLevel - 1, 0, MAX_BLUR_LAYERS - 1))).rgb * 0.125;
-    result += texture(colorTexture, vec3(vUv, clamp(focusLevel + 1, 0, MAX_BLUR_LAYERS - 1))).rgb * 0.125;
+    float pixelStep = clamp(abs(depth - focusDistance) / focusStep, 0, MAX_BLUR_LAYERS - 1);
+
+    vec3 result = texture(colorTexture, vec3(vUv, pixelStep)).rgb * 0.625;
+    result += texture(colorTexture, vec3(vUv, clamp(pixelStep - 1, 0, MAX_BLUR_LAYERS - 1))).rgb * 0.125;
+    result += texture(colorTexture, vec3(vUv, clamp(pixelStep + 1, 0, MAX_BLUR_LAYERS - 1))).rgb * 0.125;
 
     fragColor = vec4(result, 1.0);
 

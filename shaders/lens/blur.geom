@@ -3,7 +3,7 @@
 #define MAX_BLUR_LAYERS 16
 
 layout (triangles) in;
-layout (triangle_strip, max_vertices = 18) out;
+layout (triangle_strip, max_vertices = 48) out;
 
 flat out int blurLevel;
 out vec2 gUv;
