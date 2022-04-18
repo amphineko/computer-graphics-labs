@@ -25,7 +25,7 @@ jobs:
     - name: Build ozz-animation
       run: |
         cd vendors/ozz-animation
-        cmake ..
+        cmake .
         cmake --build .
 
     - name: Build
